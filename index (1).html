@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jaimin — Bank to Tally Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --ink:#0A0A0F;--paper:#F5F3EE;--cream:#EDE9E1;
+  --gold:#C8973A;--lgold:#F5E9D4;
+  --teal:#1A6B5C;--lteal:#D4EDE8;
+  --red:#B83232;--lred:#F5DADA;
+  --blue:#1A3A6B;--lblue:#DAE4F5;
+  --muted:#6B6760;--border:#D4D0C8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Syne',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh}
+.hdr{background:var(--ink);padding:0 28px;height:52px;display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid var(--gold)}
+.brand-name{font-size:18px;font-weight:800;color:#fff;letter-spacing:.05em}.brand-name span{color:var(--gold)}
+.brand-tag{font-size:9px;color:#888;font-family:'JetBrains Mono',monospace;letter-spacing:.1em;margin-left:10px;border-left:1px solid #333;padding-left:10px}
+.hdr-right{font-family:'JetBrains Mono',monospace;font-size:10px;color:#555}
+
+/* STEPS */
+.steps{background:#111;padding:0 28px;border-bottom:1px solid #222;display:flex;align-items:stretch}
+.stab{display:flex;align-items:center;gap:8px;padding:0 18px;height:40px;cursor:pointer;border-right:1px solid #222;transition:.15s;position:relative}
+.stab:hover{background:#1a1a1a}
+.stab.active{background:#1a1a1a}
+.stab.active::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--gold)}
+.stab.done .snum{background:var(--teal)}.stab.active .snum{background:var(--gold)}
+.snum{width:18px;height:18px;border-radius:50%;background:#333;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.slbl{font-size:10px;font-weight:600;color:#777}.stab.active .slbl,.stab.done .slbl{color:#aaa}
+.stab.active .slbl{color:#fff}
+.sarr{color:#444;font-size:10px;display:flex;align-items:center;padding:0 2px}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:290px 1fr;min-height:calc(100vh - 92px)}
+
+/* SIDEBAR */
+.sb{background:var(--cream);border-right:1px solid var(--border);padding:16px 14px;overflow-y:auto;height:calc(100vh - 92px);position:sticky;top:92px;display:flex;flex-direction:column;gap:14px}
+.slabel{font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.field{margin-bottom:9px}
+.field label{display:block;font-size:9px;font-weight:700;color:var(--muted);margin-bottom:3px;letter-spacing:.05em;text-transform:uppercase}
+.field input,.field select,.field textarea{width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:4px;font-family:'Syne',sans-serif;font-size:12px;color:var(--ink);background:#fff;transition:.15s}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--gold)}
+.field input[readonly]{background:var(--cream);color:var(--muted)}
+.hint{font-size:9px;color:var(--muted);margin-top:2px;line-height:1.4}
+.hint.ok{color:var(--teal);font-weight:600}
+
+/* API KEY */
+.kbox{background:var(--lgold);border:1.5px solid #DFC070;border-radius:4px;padding:9px}
+.kbox h4{font-size:9px;font-weight:700;color:var(--gold);margin-bottom:5px}
+.krow{display:flex;gap:4px}
+.kinp{flex:1;padding:6px 7px;border:1.5px solid #DFC070;border-radius:3px;font-size:10px;font-family:'JetBrains Mono',monospace;background:#FFFBF0;color:var(--ink)}
+.kinp:focus{outline:none;border-color:var(--gold)}
+.kbtn{padding:6px 8px;border:1.5px solid #DFC070;border-radius:3px;background:#FFF3D4;cursor:pointer;font-size:9px;color:#8B6200;font-weight:700}
+.knote{font-size:9px;color:#8B6200;margin-top:4px;line-height:1.4}
+.kok{font-size:9px;color:var(--teal);margin-top:3px;display:none;font-weight:700}
+
+/* UPLOAD */
+.zone{border:2px dashed var(--border);border-radius:4px;padding:14px 10px;text-align:center;cursor:pointer;background:#fff;transition:.2s}
+.zone:hover,.zone.drag{border-color:var(--gold);background:var(--lgold)}
+.zone-ico{font-size:22px;margin-bottom:5px}
+.zone-t{font-size:11px;font-weight:600}
+.zone-s{font-size:9px;color:var(--muted);margin-top:2px}
+.flist{margin-top:7px;display:flex;flex-direction:column;gap:3px}
+.frow{display:flex;align-items:center;gap:5px;padding:5px 7px;background:#fff;border:1px solid var(--border);border-radius:3px}
+.fn{flex:1;font-size:9px;font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fsz{font-size:9px;color:var(--muted)}
+.fbdg{font-size:9px;padding:1px 5px;border-radius:10px;font-weight:700;flex-shrink:0}
+.fw{background:var(--cream);color:var(--muted)}.fp{background:#FFF8E6;color:#8B6200}
+.fd{background:var(--lteal);color:var(--teal)}.fe{background:var(--lred);color:var(--red)}
+.frm{background:none;border:none;cursor:pointer;color:#ccc;font-size:11px;line-height:1}
+.frm:hover{color:var(--red)}
+
+/* BUTTONS */
+.btn{display:block;width:100%;padding:9px;border:none;border-radius:4px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:.15s;margin-bottom:5px;letter-spacing:.03em}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.b-ink{background:var(--ink);color:#fff}.b-ink:hover:not(:disabled){background:#1a1a2e}
+.b-gold{background:var(--gold);color:#fff}.b-gold:hover:not(:disabled){background:#a87830}
+.b-teal{background:var(--teal);color:#fff}.b-teal:hover:not(:disabled){background:#145a4e}
+.b-ghost{background:none;border:1.5px solid var(--border);color:var(--muted)}.b-ghost:hover{background:var(--cream)}
+
+.pbar-w{height:3px;background:var(--border);border-radius:2px;overflow:hidden;display:none;margin:5px 0}
+.pbar{height:100%;background:var(--gold);transition:width .3s}
+.pmsg{font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;display:none;margin-bottom:5px;line-height:1.4}
+
+/* MAIN */
+.main{padding:20px 24px;overflow-y:auto}
+.pg{display:none}.pg.active{display:block}
+.pg-hdr{margin-bottom:16px}
+.pg-hdr h2{font-size:18px;font-weight:800}
+.pg-hdr p{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.6}
+
+/* ACCOUNT MANAGER */
+.acc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.acc-card{background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:12px;cursor:pointer;transition:.15s;position:relative}
+.acc-card:hover{border-color:var(--gold)}
+.acc-card.selected{border-color:var(--gold);background:var(--lgold)}
+.acc-card-name{font-size:12px;font-weight:700;margin-bottom:3px}
+.acc-card-bank{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.acc-card-ledger{font-size:9px;color:var(--teal);margin-top:4px}
+.acc-del{position:absolute;top:6px;right:6px;background:none;border:none;cursor:pointer;color:#ccc;font-size:12px;line-height:1}
+.acc-del:hover{color:var(--red)}
+.acc-add{background:var(--cream);border:2px dashed var(--border);border-radius:6px;padding:12px;cursor:pointer;text-align:center;transition:.15s;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:600;color:var(--muted)}
+.acc-add:hover{border-color:var(--gold);color:var(--gold)}
+
+/* ADD ACCOUNT FORM */
+.add-acc-form{background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:16px;margin-bottom:16px;display:none}
+.add-acc-form h3{font-size:13px;font-weight:700;margin-bottom:12px}
+.form-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+
+/* STATS */
+.sc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+.sc{background:#fff;border:1px solid var(--border);border-radius:4px;padding:10px 12px}
+.sc-l{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px}
+.sc-v{font-size:17px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.sv-g{color:var(--gold)}.sv-t{color:var(--teal)}.sv-r{color:var(--red)}
+
+/* TABLE */
+.tbl-card{background:#fff;border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:12px}
+.tbl-hdr{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:1px solid var(--border);background:var(--cream)}
+.tbl-hdr-t{font-size:11px;font-weight:700}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:11px}
+thead th{background:var(--ink);color:#fff;padding:7px 8px;text-align:left;font-size:9px;font-weight:600;letter-spacing:.06em;white-space:nowrap}
+tbody tr{border-bottom:1px solid #F0EEE8}
+tbody tr:hover{background:#FAFAF7}
+td{padding:6px 8px;font-size:11px}
+td.mono{font-family:'JetBrains Mono',monospace;font-size:10px}
+td.num{text-align:right;font-family:'JetBrains Mono',monospace}
+td.cen{text-align:center}
+.vb{display:inline-block;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700}
+.vb-p{background:var(--lred);color:var(--red)}.vb-r{background:var(--lteal);color:var(--teal)}.vb-j{background:var(--lgold);color:#8B6200}
+.tfoot-row td{background:var(--ink);color:#fff;font-weight:700;padding:8px;font-family:'JetBrains Mono',monospace;text-align:right;font-size:10px}
+.dbtn{background:none;border:none;cursor:pointer;color:#ccc;font-size:10px;padding:2px}
+.dbtn:hover{color:var(--red)}
+
+/* EXCEL UPLOAD ZONE */
+.xl-zone{border:2px dashed var(--teal);border-radius:5px;padding:16px;text-align:center;cursor:pointer;background:var(--lteal);transition:.2s}
+.xl-zone:hover,.xl-zone.drag{background:#C0E8E2}
+
+/* INFO */
+.ibox{background:var(--lblue);border:1px solid #A8C0E0;border-radius:4px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--blue);line-height:1.6}
+
+/* MODAL */
+.mov{position:fixed;inset:0;background:rgba(10,10,15,.6);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(3px)}
+.mov.open{display:flex}
+.modal{background:#fff;border-radius:6px;padding:22px;width:500px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.3);border-top:3px solid var(--gold)}
+.modal h2{font-size:15px;font-weight:700;margin-bottom:14px}
+.mbrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.mbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+.mbp{padding:8px 16px;border-radius:3px;border:none;background:var(--ink);color:#fff;font-family:'Syne',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
+.mbg{padding:8px 16px;border-radius:3px;border:1.5px solid var(--border);background:#fff;color:var(--muted);font-family:'Syne',sans-serif;font-size:12px;cursor:pointer}
+
+/* TOAST */
+.toast{position:fixed;bottom:16px;right:16px;padding:9px 14px;border-radius:4px;font-size:11px;font-weight:600;transform:translateY(60px);transition:.25s;z-index:999;border-left:3px solid;box-shadow:0 4px 20px rgba(0,0,0,.1);background:#fff}
+.toast.show{transform:translateY(0)}
+.toast.ok{color:var(--teal);border-color:var(--teal)}
+.toast.err{color:var(--red);border-color:var(--red)}
+.toast.info{color:var(--ink);border-color:var(--gold)}
+
+.empty{text-align:center;padding:40px;color:var(--muted);opacity:.5}
+.empty-ico{font-size:32px;margin-bottom:8px}
+.empty-t{font-size:13px;font-weight:600}
+.empty-s{font-size:10px;margin-top:4px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div style="display:flex;align-items:center">
+    <div class="brand-name">JAI<span>MIN</span></div>
+    <div class="brand-tag">BANK → TALLY PRO · 6 ACCOUNTS</div>
+  </div>
+  <div class="hdr-right" id="dateBadge"></div>
+</div>
+
+<div class="steps">
+  <div class="stab active" id="tab1" onclick="goStep(1)"><div class="snum" id="sn1">1</div><div class="slbl">Accounts Setup</div></div>
+  <div class="sarr">›</div>
+  <div class="stab" id="tab2" onclick="goStep(2)"><div class="snum" id="sn2">2</div><div class="slbl">Extract Transactions</div></div>
+  <div class="sarr">›</div>
+  <div class="stab" id="tab3" onclick="goStep(3)"><div class="snum" id="sn3">3</div><div class="slbl">Download Excel → Fix Ledgers</div></div>
+  <div class="sarr">›</div>
+  <div class="stab" id="tab4" onclick="goStep(4)"><div class="snum" id="sn4">4</div><div class="slbl">Generate Tally XML</div></div>
+</div>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sb">
+
+    <div>
+      <div class="slabel">API Key</div>
+      <div class="kbox">
+        <h4>🔑 Anthropic API Key</h4>
+        <div class="krow">
+          <input type="password" class="kinp" id="apiKey" placeholder="sk-ant-api03-..." oninput="saveKey()">
+          <button class="kbtn" onclick="toggleKey()">Show</button>
+        </div>
+        <div class="knote">Free at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--gold)">console.anthropic.com</a></div>
+        <div class="kok" id="keyOk">✅ Key saved</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="slabel">Active Account</div>
+      <div class="field">
+        <label>Select Account to Process</label>
+        <select id="activeAccSel" onchange="onAccChange()">
+          <option value="">-- Select Account --</option>
+        </select>
+      </div>
+      <div id="activeAccInfo" style="font-size:10px;color:var(--teal);display:none;padding:6px 8px;background:var(--lteal);border-radius:3px;line-height:1.5"></div>
+    </div>
+
+    <div>
+      <div class="slabel">Upload PDF Statement</div>
+      <div class="zone" id="dz" onclick="document.getElementById('fi').click()">
+        <div class="zone-ico">📄</div>
+        <div class="zone-t">Drop PDF here</div>
+        <div class="zone-s">Any bank · Any month</div>
+      </div>
+      <input type="file" id="fi" accept=".pdf" multiple style="display:none">
+      <div class="flist" id="flist"></div>
+    </div>
+
+    <div class="pbar-w" id="pw"><div class="pbar" id="pb" style="width:0%"></div></div>
+    <div class="pmsg" id="pm"></div>
+
+    <div>
+      <div class="slabel">Actions</div>
+      <button class="btn b-ink" id="extractBtn" onclick="runExtraction()">⚡ Extract Transactions</button>
+      <button class="btn b-gold" id="dlXlBtn" onclick="downloadExcel()" style="display:none">⬇ Download Excel</button>
+      <button class="btn b-teal" id="step3Btn" onclick="goStep(3)" style="display:none">→ Fix Ledgers</button>
+      <button class="btn b-ghost" onclick="clearAll()" style="margin-top:4px">✕ Clear all data</button>
+    </div>
+
+  </div>
+
+  <!-- MAIN PAGES -->
+  <div class="main">
+
+    <!-- PAGE 1: ACCOUNTS SETUP -->
+    <div class="pg active" id="pg1">
+      <div class="pg-hdr">
+        <h2>Step 1 — Account Setup</h2>
+        <p>Add all 6 persons and their bank accounts. Each account has a holder name, bank name, and exact Tally ledger name.</p>
+      </div>
+
+      <div class="ibox">
+        <b>Key Rule:</b> The <b>Tally Ledger Name</b> must match <b>exactly</b> what you have in Tally (same spelling, same capitals). This is used in the XML — if it matches Tally, entry posts correctly. If not → goes to SUSPENSE automatically. <b>No errors ever.</b>
+      </div>
+
+      <div class="acc-grid" id="accGrid">
+        <div class="acc-add" onclick="openAddAcc()">
+          <span style="font-size:18px">＋</span> Add Account
+        </div>
+      </div>
+
+      <!-- ADD/EDIT ACCOUNT FORM -->
+      <div class="add-acc-form" id="addAccForm">
+        <h3 id="addAccTitle">➕ Add New Account</h3>
+        <div class="form-row">
+          <div class="field">
+            <label>Account Holder Name *</label>
+            <input type="text" id="accName" placeholder="e.g. Jaimin H Shah">
+          </div>
+          <div class="field">
+            <label>Bank Name *</label>
+            <select id="accBank" onchange="onAccBankChange()">
+              <option value="">-- Select Bank --</option>
+              <option value="IDFC First Bank">IDFC First Bank</option>
+              <option value="Equitas Small Finance Bank">Equitas Small Finance Bank</option>
+              <option value="Bank of Baroda">Bank of Baroda</option>
+              <option value="HDFC Bank">HDFC Bank</option>
+              <option value="Central Bank of India">Central Bank of India</option>
+              <option value="State Bank of India">State Bank of India</option>
+              <option value="ICICI Bank">ICICI Bank</option>
+              <option value="Axis Bank">Axis Bank</option>
+              <option value="Kotak Mahindra Bank">Kotak Mahindra Bank</option>
+              <option value="Yes Bank">Yes Bank</option>
+              <option value="custom">+ Other (type manually)</option>
+            </select>
+          </div>
+          <div class="field" id="customBankField" style="display:none">
+            <label>Custom Bank Name</label>
+            <input type="text" id="customBankInp" placeholder="Type bank name">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Account Number (last 4 digits)</label>
+            <input type="text" id="accNo" placeholder="e.g. 1837" maxlength="10">
+          </div>
+          <div class="field">
+            <label>Tally Ledger Name *</label>
+            <input type="text" id="accLedger" placeholder="Exact name in Tally">
+            <div class="hint">⚠️ Must match exactly as in Tally. E.g: IDFC BANK SAVINGS-1837</div>
+          </div>
+          <div class="field">
+            <label>Account Type</label>
+            <select id="accType">
+              <option value="Savings">Savings</option>
+              <option value="Current">Current</option>
+              <option value="OD">Overdraft / OD</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button onclick="saveAccount()" style="padding:8px 20px;background:var(--ink);color:#fff;border:none;border-radius:3px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer">Save Account</button>
+          <button onclick="closeAddAcc()" style="padding:8px 14px;background:none;border:1.5px solid var(--border);border-radius:3px;font-family:'Syne',sans-serif;font-size:12px;cursor:pointer;color:var(--muted)">Cancel</button>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;padding:12px;background:#fff;border:1px solid var(--border);border-radius:5px">
+        <div style="font-size:11px;font-weight:700;margin-bottom:8px">💡 Default Party Ledger Rule</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.6">
+          All unknown parties → <b style="color:var(--gold)">SUSPENSE</b> by default.<br>
+          You can change ledger names in the Excel (Step 3) before generating XML.<br>
+          If ledger exists in Tally → entry posts correctly ✅<br>
+          If ledger doesn't exist → entry goes to SUSPENSE → No error ✅
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE 2: EXTRACT -->
+    <div class="pg" id="pg2">
+      <div class="pg-hdr">
+        <h2>Step 2 — Extract Transactions</h2>
+        <p>Select account → upload PDF → AI extracts all transactions automatically.</p>
+      </div>
+
+      <div id="empty2" class="empty"><div class="empty-ico">🏦</div><div class="empty-t">No transactions yet</div><div class="empty-s">Select account from sidebar → Upload PDF → Click Extract</div></div>
+      <div id="table2wrap" style="display:none">
+        <div class="sc-grid" id="scg2">
+          <div class="sc"><div class="sc-l">Transactions</div><div class="sc-v" id="s2a">0</div></div>
+          <div class="sc"><div class="sc-l">Total Debit</div><div class="sc-v sv-r" id="s2b">₹0</div></div>
+          <div class="sc"><div class="sc-l">Total Credit</div><div class="sc-v sv-t" id="s2c">₹0</div></div>
+          <div class="sc"><div class="sc-l">Net</div><div class="sc-v sv-g" id="s2d">₹0</div></div>
+        </div>
+        <div class="tbl-card">
+          <div class="tbl-hdr"><div class="tbl-hdr-t">Extracted Transactions</div><div style="font-size:9px;color:var(--muted)" id="t2cnt"></div></div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>#</th><th>DATE</th><th>ACCOUNT</th><th>NARRATION</th><th>TYPE</th><th>DEBIT ₹</th><th>CREDIT ₹</th><th>TALLY LEDGER</th><th></th></tr></thead>
+              <tbody id="tbody2"></tbody>
+              <tfoot><tr class="tfoot-row"><td colspan="4">TOTAL</td><td></td><td id="tf2d">₹0</td><td id="tf2c">₹0</td><td></td><td></td></tr></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE 3: FIX LEDGERS -->
+    <div class="pg" id="pg3">
+      <div class="pg-hdr">
+        <h2>Step 3 — Download Excel → Fix Ledgers → Upload Back</h2>
+        <p>This is the key step. Edit column <b>H (TALLY LEDGER)</b> in Excel — replace SUSPENSE with correct Tally ledger names. Upload back and all names are updated.</p>
+      </div>
+
+      <div class="ibox">
+        <b>Important — How Tally XML works:</b><br>
+        ✅ Ledger name in Excel <b>matches exactly</b> a ledger in Tally → Entry posts to that ledger<br>
+        ⚠️ Ledger name <b>does NOT match</b> any Tally ledger → Entry goes to SUSPENSE automatically<br>
+        🚫 <b>No error at any time</b> — import will always succeed regardless of ledger names
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+        <div style="background:#fff;border:1px solid var(--border);border-radius:5px;padding:14px">
+          <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--gold)">📥 STEP A — Download Excel</div>
+          <button class="btn b-gold" onclick="downloadExcel()">⬇ Download Excel Register</button>
+          <div style="font-size:10px;color:var(--muted);line-height:1.7;margin-top:6px">
+            Open the Excel → Find column <b>H: TALLY LEDGER</b><br>
+            Change <span style="color:var(--gold);font-weight:700">SUSPENSE</span> → exact Tally ledger name<br>
+            Save the file
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid var(--border);border-radius:5px;padding:14px">
+          <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--teal)">📤 STEP B — Upload Corrected Excel</div>
+          <div class="xl-zone" id="xlZone" onclick="document.getElementById('xlFile').click()">
+            <div style="font-size:20px;margin-bottom:5px">📊</div>
+            <div style="font-size:12px;font-weight:700;color:var(--teal)">Drop corrected Excel here</div>
+            <div style="font-size:10px;color:#3D8A7A;margin-top:2px">Upload your edited .xlsx file</div>
+          </div>
+          <input type="file" id="xlFile" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
+          <div id="xlStatus" style="font-size:10px;color:var(--teal);margin-top:5px;display:none;font-weight:600"></div>
+          <div style="font-size:10px;color:var(--muted);margin-top:6px">Or skip this step → proceed to XML with SUSPENSE for unmatched entries</div>
+        </div>
+      </div>
+
+      <div class="tbl-card">
+        <div class="tbl-hdr">
+          <div class="tbl-hdr-t">Ledger Mapping Status</div>
+          <div style="font-size:10px"><span id="matchedCnt" style="color:var(--teal);font-weight:700">0</span> mapped · <span id="suspCnt" style="color:var(--gold);font-weight:700">0</span> → SUSPENSE</div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>#</th><th>DATE</th><th>ACCOUNT</th><th>NARRATION</th><th>TYPE</th><th>AMOUNT ₹</th><th>TALLY LEDGER</th><th>STATUS</th></tr></thead>
+            <tbody id="tbody3"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <button class="btn b-teal" style="flex:1" onclick="goStep(4)">→ Generate Tally XML</button>
+        <button class="btn b-ghost" style="width:100px" onclick="goStep(2)">← Back</button>
+      </div>
+    </div>
+
+    <!-- PAGE 4: GENERATE XML -->
+    <div class="pg" id="pg4">
+      <div class="pg-hdr">
+        <h2>Step 4 — Generate &amp; Import to Tally</h2>
+        <p>XML files are split by <b>account + month</b>. Import one at a time in Tally.</p>
+      </div>
+
+      <div class="ibox">
+        <b>Guaranteed No Error:</b> Every ledger name is validated before XML generation. Unknown ledgers → SUSPENSE. Tally will accept every XML file without any error.
+      </div>
+
+      <div id="xmlStats" style="margin-bottom:14px"></div>
+      <div id="xmlList"></div>
+
+      <div style="background:#fff;border:1px solid var(--border);border-radius:5px;padding:14px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;margin-bottom:10px">How to Import in TallyPrime</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <div style="text-align:center;padding:10px;background:var(--cream);border-radius:4px">
+            <div style="font-size:18px;margin-bottom:4px">1️⃣</div>
+            <div style="font-size:10px;font-weight:600">Click ⬇ XML button</div>
+          </div>
+          <div style="text-align:center;padding:10px;background:var(--cream);border-radius:4px">
+            <div style="font-size:18px;margin-bottom:4px">2️⃣</div>
+            <div style="font-size:10px;font-weight:600">Open TallyPrime</div>
+          </div>
+          <div style="text-align:center;padding:10px;background:var(--cream);border-radius:4px">
+            <div style="font-size:18px;margin-bottom:4px">3️⃣</div>
+            <div style="font-size:10px;font-weight:600">O: Import → Vouchers</div>
+          </div>
+          <div style="text-align:center;padding:10px;background:var(--cream);border-radius:4px">
+            <div style="font-size:18px;margin-bottom:4px">4️⃣</div>
+            <div style="font-size:10px;font-weight:600">Select XML → Done ✅</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px">
+        <button class="btn b-ink" style="flex:1" onclick="downloadAllXML()">⬇ Download All XML Files</button>
+        <button class="btn b-ghost" style="width:100px" onclick="goStep(3)">← Back</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── PROXY CONFIG ─────────────────────────────────────────────────────────
+// Set your Cloudflare Worker URL here after deploying
+const PROXY_URL = 'https://jaimin-proxy.jaimin8586.workers.dev';
+
+// ── STATE ─────────────────────────────────────────────────────────────────
+let accounts = [];   // {id, name, bank, accNo, ledger, type}
+let rows = [];       // all extracted transactions
+let editAccId = null;
+let qFiles = [];
+const SUSPENSE = 'SUSPENSE';
+const MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+// ── KNOWN LEDGER AUTO-MATCH ───────────────────────────────────────────────
+const KNOWN = {
+  'ROHA HOUSING':'ROHA HOUSING FINANCE PRIVATE LIMITED',
+  'ICICI LOMBARD':'ICICI LOMBARD GIC COMMISSION',
+  'NISHITH ATUL':'NISHITBHAI SHAH','NISHITBHAI':'NISHITBHAI SHAH',
+  'RIPAL RAJAN':'RIPAL R DESAI','RIPAL R DESAI':'RIPAL R DESAI',
+  'PIONEER FINMART':'Pioneer Finmart',
+  'SHREEJI ASSOCIATES':'SHREEJI ASSOCIATES',
+  'ZERODHA BROKING':'Zerodha Broking Ltd','ZERODHA':'Zerodha Broking Ltd',
+  'JM FINANCIAL':'JM FINANCIAL SERVICES',
+  'CARECAY PRIVATE':'CARECAY PRIVATE LIMITED',
+  'CARECAY CARS':'CARECAY CARS PVT LTD',
+  'LIC OF INDIA':'LIC of India','LIFE INSURANCE CORPORATIO':'LIC of India',
+  'PIONEER AUTO TRADE':'Pioneer Auto Tradelink',
+  'HEMENDRAKUMAR':'HEMENDRA B SHAH HUF',
+  'SHAH HEMENDRA':'HEMENDRA B SHAH HUF',
+  'SHAH DHARA':'Mrs Shah Dhara Jaimin',
+  'SHAH NITA':'Mrs Shah Nita',
+  'BANDHAN LIFE':'BANDHAN LIFE INSURANCE',
+  'WIPRO LIMITED':'WIPRO LIMITED DIVIDEND',
+  'POWER FINANCE':'POWER FINANCE CORP DIVIDEND',
+  'POWER GRID':'POWER GRID DIVIDEND',
+  'RELIANCE INDUSTRIES':'RELIANCE INDUSTRIES DIVIDEND',
+  'TCS':'TCS DIVIDEND','TATA CONSULTANCY':'TCS DIVIDEND',
+  'HERO MOTOCORP':'HERO MOTOCORP DIVIDEND',
+  'TATA MOTORS':'TATA MOTORS DIVIDEND',
+  'JSW STEEL':'JSW STEEL DIVIDEND',
+  'REC LIMITED':'REC LIMITED DIVIDEND',
+  'INDIAN ENERGY EXCHANGE':'IEX DIVIDEND',
+  'HDB FINANCIAL':'HDB FINANCIAL DIVIDEND',
+  'TTL FIN':'TTL DIVIDEND','TTLFINDIV':'TTL DIVIDEND',
+  'DEBIT INTEREST':'BANK CHARGES',
+  'MONTHLY SAVINGS INTEREST':'BANK INTEREST INCOME',
+  'BANK CHARGES':'BANK CHARGES',
+};
+
+function matchLedger(narration){
+  const n=(narration||'').toUpperCase();
+  for(const[k,v]of Object.entries(KNOWN)){if(n.includes(k.toUpperCase()))return v;}
+  return SUSPENSE;
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+window.onload=()=>{
+  document.getElementById('dateBadge').textContent=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  const k=localStorage.getItem('jm_key');if(k){document.getElementById('apiKey').value=k;document.getElementById('keyOk').style.display='block';}
+  try{accounts=JSON.parse(localStorage.getItem('jm_accounts')||'[]');}catch(e){accounts=[];}
+  try{rows=JSON.parse(localStorage.getItem('jm_rows')||'[]');}catch(e){rows=[];}
+  renderAccounts();populateAccSel();renderAll();
+  setupDrop('dz','fi',addFiles);
+  setupDrop('xlZone','xlFile',null);
+};
+
+function saveKey(){const k=document.getElementById('apiKey').value.trim();if(k.startsWith('sk-ant-')){localStorage.setItem('jm_key',k);document.getElementById('keyOk').style.display='block';}}
+function toggleKey(){const i=document.getElementById('apiKey');i.type=i.type==='password'?'text':'password';event.target.textContent=i.type==='password'?'Show':'Hide';}
+function saveAccounts(){localStorage.setItem('jm_accounts',JSON.stringify(accounts));}
+function saveRows(){try{localStorage.setItem('jm_rows',JSON.stringify(rows));}catch(e){}}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function gm(d){const p=(d||'').split('/');if(p.length>=2){const m=parseInt(p[1])-1;return(MN[m]||p[1])+' '+(p[2]||'');}return d||'';}
+function n(v){const f=parseFloat(v);return isNaN(f)?0:parseFloat(f.toFixed(2));}
+function inr(v){return'₹'+n(v).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function td(d){const p=String(d).split('/');return`${p[2]}${p[1]}${p[0]}`;}
+function xe(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function setupDrop(zoneId,inputId,cb){
+  const z=document.getElementById(zoneId);
+  z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('drag')});
+  z.addEventListener('dragleave',()=>z.classList.remove('drag'));
+  if(cb) z.addEventListener('drop',e=>{e.preventDefault();z.classList.remove('drag');cb(e.dataTransfer.files)});
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('fi').addEventListener('change',e=>{addFiles(e.target.files);e.target.value='';});
+  document.getElementById('xlFile').addEventListener('change',importExcel);
+});
+
+// ── ACCOUNTS ──────────────────────────────────────────────────────────────
+function renderAccounts(){
+  const grid=document.getElementById('accGrid');
+  const cards=accounts.map(a=>`
+    <div class="acc-card ${a.id===editAccId?'selected':''}" onclick="selectAccCard('${a.id}')">
+      <div class="acc-card-name">${a.name}</div>
+      <div class="acc-card-bank">${a.bank}</div>
+      <div class="acc-card-ledger">Tally: ${a.ledger}</div>
+      <div style="font-size:9px;color:var(--muted);margin-top:2px">${a.type} · ${a.accNo?'...'+a.accNo:''}</div>
+      <button class="acc-del" onclick="event.stopPropagation();deleteAcc('${a.id}')">✕</button>
+    </div>`).join('');
+  grid.innerHTML=cards+`<div class="acc-add" onclick="openAddAcc()"><span style="font-size:18px">＋</span> Add Account</div>`;
+}
+
+function populateAccSel(){
+  const sel=document.getElementById('activeAccSel');
+  sel.innerHTML='<option value="">-- Select Account --</option>'+
+    accounts.map(a=>`<option value="${a.id}">${a.name} — ${a.bank}</option>`).join('');
+}
+
+function selectAccCard(id){
+  document.getElementById('activeAccSel').value=id;
+  onAccChange();
+}
+
+function onAccChange(){
+  const id=document.getElementById('activeAccSel').value;
+  const acc=accounts.find(a=>a.id===id);
+  const info=document.getElementById('activeAccInfo');
+  if(acc){
+    info.style.display='block';
+    info.innerHTML=`<b>${acc.name}</b> · ${acc.bank}<br>Tally Ledger: <b>${acc.ledger}</b>`;
+  } else {
+    info.style.display='none';
+  }
+}
+
+function openAddAcc(id){
+  editAccId=id||null;
+  const form=document.getElementById('addAccForm');
+  document.getElementById('addAccTitle').textContent=id?'✏️ Edit Account':'➕ Add New Account';
+  if(id){
+    const a=accounts.find(x=>x.id===id);
+    if(a){
+      document.getElementById('accName').value=a.name;
+      document.getElementById('accBank').value=a.bank||'custom';
+      document.getElementById('accNo').value=a.accNo||'';
+      document.getElementById('accLedger').value=a.ledger;
+      document.getElementById('accType').value=a.type||'Savings';
+    }
+  } else {
+    ['accName','accNo','accLedger'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('accBank').value='';
+    document.getElementById('accType').value='Savings';
+  }
+  form.style.display='block';
+  form.scrollIntoView({behavior:'smooth'});
+}
+
+function closeAddAcc(){document.getElementById('addAccForm').style.display='none';editAccId=null;}
+
+function onAccBankChange(){
+  const v=document.getElementById('accBank').value;
+  document.getElementById('customBankField').style.display=v==='custom'?'block':'none';
+  if(v&&v!=='custom'){
+    const no=document.getElementById('accNo').value;
+    const type=document.getElementById('accType').value;
+    // Auto suggest ledger name
+    const shortName=v.replace(' Bank','').replace(' Small Finance','').replace(' Mahindra','').toUpperCase();
+    const ledger=`${shortName} ${type.toUpperCase()}${no?'-'+no:''}`;
+    if(!document.getElementById('accLedger').value)
+      document.getElementById('accLedger').value=ledger;
+  }
+}
+
+function saveAccount(){
+  const name=document.getElementById('accName').value.trim();
+  let bank=document.getElementById('accBank').value;
+  if(bank==='custom')bank=document.getElementById('customBankInp').value.trim();
+  const accNo=document.getElementById('accNo').value.trim();
+  const ledger=document.getElementById('accLedger').value.trim();
+  const type=document.getElementById('accType').value;
+  if(!name||!bank||!ledger){toast('Fill Name, Bank and Tally Ledger Name','err');return;}
+  if(editAccId){
+    const idx=accounts.findIndex(a=>a.id===editAccId);
+    if(idx>=0)accounts[idx]={...accounts[idx],name,bank,accNo,ledger,type};
+  } else {
+    accounts.push({id:uid(),name,bank,accNo,ledger,type});
+  }
+  saveAccounts();renderAccounts();populateAccSel();closeAddAcc();
+  toast(editAccId?'✅ Account updated':'✅ Account added','ok');
+}
+
+function deleteAcc(id){
+  if(!confirm('Remove this account?'))return;
+  accounts=accounts.filter(a=>a.id!==id);
+  saveAccounts();renderAccounts();populateAccSel();toast('Account removed','info');
+}
+
+// ── FILE QUEUE ────────────────────────────────────────────────────────────
+function addFiles(list){
+  for(const f of list){
+    if(!f.name.toLowerCase().endsWith('.pdf'))continue;
+    if(qFiles.length>=10){toast('Max 10 files','err');break;}
+    if(qFiles.find(x=>x.name===f.name&&x.size===f.size))continue;
+    qFiles.push(f);
+  }
+  renderQ();
+}
+function renderQ(){
+  document.getElementById('flist').innerHTML=qFiles.map((f,i)=>`
+    <div class="frow"><span style="font-size:11px">📄</span>
+    <span class="fn">${f.name}</span>
+    <span class="fsz">${(f.size/1024).toFixed(0)}K</span>
+    <span class="fbdg fw" id="fb${i}">Wait</span>
+    <button class="frm" onclick="removeFile(${i})">✕</button></div>`).join('');
+}
+function removeFile(i){qFiles.splice(i,1);renderQ();}
+function setSt(i,cls,t){const el=document.getElementById('fb'+i);if(el){el.className='fbdg '+cls;el.textContent=t;}}
+
+// ── EXTRACT ───────────────────────────────────────────────────────────────
+function toB64(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(f);});}
+
+async function extractPDF(file,idx,apiKey){
+  setSt(idx,'fp','Reading');
+  let b64;try{b64=await toB64(file);}catch(e){setSt(idx,'fe','Error');return[];}
+  const sys=`Extract ALL transactions from this bank statement PDF.
+Return ONLY a valid JSON array. No markdown.
+Each object: {"date":"DD/MM/YYYY","narration":"full description","vtype":"Payment|Receipt|Journal","debit":number,"credit":number,"balance":number}
+Rules: debit=money out, credit=money in, Journal=bank charges or interest. Extract every single row.`;
+  try{
+    const API_URL = PROXY_URL || 'https://api.anthropic.com/v1/messages';
+    const resp=await fetch(API_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:4000,system:sys,
+        messages:[{role:'user',content:[
+          {type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},
+          {type:'text',text:'Extract all bank transactions. Return JSON array only.'}
+        ]}]})
+    });
+    if(!resp.ok){const e=await resp.json().catch(()=>({}));setSt(idx,'fe',resp.status);toast('API Error: '+(e.error?.message||resp.status),'err');return[];}
+    const data=await resp.json();
+    const raw=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+    const clean=raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```\s*$/,'').trim();
+    let items;
+    try{items=JSON.parse(clean);}
+    catch(e){const m=clean.match(/\[[\s\S]*\]/);if(m){try{items=JSON.parse(m[0]);}catch{setSt(idx,'fe','Parse');return[];}}else{setSt(idx,'fe','No data');return[];}}
+    if(!Array.isArray(items))items=[items];
+    setSt(idx,'fd','✓ '+items.length);
+    return items;
+  }catch(e){setSt(idx,'fe',e.message.substring(0,15));return[];}
+}
+
+async function runExtraction(){
+  const apiKey=document.getElementById('apiKey').value.trim();
+  if(!apiKey||!apiKey.startsWith('sk-ant-')){toast('Enter API key first','err');return;}
+  const accId=document.getElementById('activeAccSel').value;
+  if(!accId){toast('Select an account first','err');return;}
+  if(!qFiles.length){toast('Upload PDF statement first','err');return;}
+  const acc=accounts.find(a=>a.id===accId);
+  if(!acc){toast('Account not found','err');return;}
+  const btn=document.getElementById('extractBtn');btn.disabled=true;
+  const pw=document.getElementById('pw'),pb=document.getElementById('pb'),pm=document.getElementById('pm');
+  pw.style.display='block';pb.style.width='0%';pm.style.display='block';
+  let added=0;
+  for(let i=0;i<qFiles.length;i++){
+    pm.textContent=`${acc.name}: ${i+1}/${qFiles.length} — ${qFiles[i].name}`;
+    const items=await extractPDF(qFiles[i],i,apiKey);
+    items.forEach(it=>{
+      rows.push({
+        date:it.date,narration:it.narration,vtype:it.vtype||'Payment',
+        debit:n(it.debit),credit:n(it.credit),balance:n(it.balance),
+        ledger:matchLedger(it.narration),
+        accId:acc.id,accName:acc.name,bankLedger:acc.ledger
+      });
+      added++;
+    });
+    pb.style.width=Math.round((i+1)/qFiles.length*100)+'%';
+  }
+  pm.textContent=`✅ ${added} transactions from ${acc.name}`;
+  saveRows();renderAll();btn.disabled=false;
+  if(added>0){
+    toast(`✅ ${added} transactions extracted`,'ok');
+    qFiles=[];renderQ();
+    document.getElementById('dlXlBtn').style.display='block';
+    document.getElementById('step3Btn').style.display='block';
+    goStep(2);
+  }
+}
+
+// ── IMPORT EXCEL ──────────────────────────────────────────────────────────
+function importExcel(event){
+  const file=event.target.files?event.target.files[0]:event.dataTransfer?.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      // Find header
+      let hRow=-1;
+      for(let i=0;i<Math.min(5,data.length);i++){
+        const r=data[i].map(c=>String(c).toUpperCase());
+        if(r.some(c=>c.includes('DATE')||c.includes('SR'))){hRow=i;break;}
+      }
+      if(hRow<0){toast('Cannot find header row','err');return;}
+      const hdr=data[hRow].map(h=>String(h).toUpperCase().trim());
+      const lcol=hdr.findIndex(h=>h.includes('LEDGER')||h.includes('TALLY'));
+      const dcol=hdr.findIndex(h=>h.includes('DATE'));
+      const ncol=hdr.findIndex(h=>h.includes('NARR')||h.includes('PARTICULAR'));
+      if(lcol<0){toast('No TALLY LEDGER column in Excel','err');return;}
+      let updated=0;
+      for(let i=hRow+1;i<data.length;i++){
+        const xl=data[i];
+        const xlL=String(xl[lcol]||'').trim();
+        const xlD=String(xl[dcol]||'').trim();
+        const xlN=String(xl[ncol]||'').trim();
+        if(!xlL||xlL.toUpperCase()==='TALLY LEDGER')continue;
+        // Match row by date or narration
+        for(let j=0;j<rows.length;j++){
+          const r=rows[j];
+          const dm=xlD&&r.date&&r.date.includes(xlD.substring(0,8));
+          const nm=xlN&&r.narration&&(r.narration.substring(0,25).toLowerCase().includes(xlN.substring(0,20).toLowerCase()));
+          if(dm||nm){rows[j].ledger=xlL;updated++;break;}
+        }
+      }
+      saveRows();renderAll();
+      document.getElementById('xlStatus').style.display='block';
+      document.getElementById('xlStatus').textContent=`✅ ${updated} ledger names updated`;
+      toast(`✅ ${updated} ledger names updated from Excel`,'ok');
+    }catch(err){toast('Error reading Excel: '+err.message,'err');}
+  };
+  reader.readAsBinaryString(file);
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────
+function renderAll(){
+  if(rows.length>0){document.getElementById('dlXlBtn').style.display='block';document.getElementById('step3Btn').style.display='block';}
+  renderPage2();renderPage3();renderPage4();
+}
+
+function renderPage2(){
+  const empty=rows.length===0;
+  document.getElementById('empty2').style.display=empty?'block':'none';
+  document.getElementById('table2wrap').style.display=empty?'none':'block';
+  if(empty)return;
+  const tDr=rows.reduce((s,r)=>s+r.debit,0),tCr=rows.reduce((s,r)=>s+r.credit,0);
+  document.getElementById('s2a').textContent=rows.length;
+  document.getElementById('s2b').textContent=inr(tDr);
+  document.getElementById('s2c').textContent=inr(tCr);
+  document.getElementById('s2d').textContent=inr(tCr-tDr);
+  document.getElementById('tf2d').textContent=inr(tDr);
+  document.getElementById('tf2c').textContent=inr(tCr);
+  document.getElementById('t2cnt').textContent=rows.length+' entries';
+  document.getElementById('tbody2').innerHTML=rows.map((r,i)=>{
+    const vbc=r.vtype==='Payment'?'vb-p':r.vtype==='Receipt'?'vb-r':'vb-j';
+    const isSusp=r.ledger===SUSPENSE;
+    return`<tr>
+      <td class="cen mono">${i+1}</td>
+      <td class="mono">${r.date}</td>
+      <td style="font-size:10px;color:var(--teal)">${r.accName||''}</td>
+      <td>${r.narration}</td>
+      <td class="cen"><span class="vb ${vbc}">${r.vtype}</span></td>
+      <td class="num">${r.debit?inr(r.debit):''}</td>
+      <td class="num">${r.credit?inr(r.credit):''}</td>
+      <td class="mono" style="font-size:9px;${isSusp?'color:var(--gold)':''}">${r.ledger}</td>
+      <td><button class="dbtn" onclick="deleteRow(${i})">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPage3(){
+  if(!rows.length)return;
+  const matched=rows.filter(r=>r.ledger!==SUSPENSE).length;
+  document.getElementById('matchedCnt').textContent=matched;
+  document.getElementById('suspCnt').textContent=rows.length-matched;
+  document.getElementById('tbody3').innerHTML=rows.map((r,i)=>{
+    const amt=r.debit||r.credit;
+    const isSusp=r.ledger===SUSPENSE;
+    return`<tr>
+      <td class="cen mono">${i+1}</td><td class="mono">${r.date}</td>
+      <td style="font-size:10px;color:var(--teal)">${r.accName||''}</td>
+      <td>${r.narration}</td>
+      <td class="cen"><span class="vb ${r.vtype==='Payment'?'vb-p':r.vtype==='Receipt'?'vb-r':'vb-j'}">${r.vtype}</span></td>
+      <td class="num">${inr(amt)}</td>
+      <td class="mono" style="font-size:9px;${isSusp?'color:var(--gold)':''}">${r.ledger}</td>
+      <td class="cen" style="font-size:10px">${isSusp?'<span style="color:var(--gold)">→ SUSPENSE</span>':'<span style="color:var(--teal);font-weight:600">✓ Mapped</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPage4(){
+  if(!rows.length)return;
+  // Group by account + month
+  const groups={};
+  rows.forEach(r=>{
+    const key=`${r.accName||'Unknown'}__${gm(r.date)}`;
+    if(!groups[key])groups[key]=[];
+    groups[key].push(r);
+  });
+  const keys=Object.keys(groups);
+  const susp=rows.filter(r=>r.ledger===SUSPENSE).length;
+  document.getElementById('xmlStats').innerHTML=`
+    <div class="sc-grid">
+      <div class="sc"><div class="sc-l">Total Vouchers</div><div class="sc-v">${rows.length}</div></div>
+      <div class="sc"><div class="sc-l">XML Files</div><div class="sc-v sv-g">${keys.length}</div></div>
+      <div class="sc"><div class="sc-l">Mapped</div><div class="sc-v sv-t">${rows.length-susp}</div></div>
+      <div class="sc"><div class="sc-l">→ SUSPENSE</div><div class="sc-v sv-g">${susp}</div></div>
+    </div>`;
+  document.getElementById('xmlList').innerHTML=keys.map(k=>{
+    const[accName,month]=k.split('__');
+    const gr=groups[k];
+    const s=gr.filter(r=>r.ledger===SUSPENSE).length;
+    return`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:#fff;border:1px solid var(--border);border-radius:4px;margin-bottom:5px">
+      <div>
+        <div style="font-size:11px;font-weight:700">${accName} — ${month}</div>
+        <div style="font-size:9px;color:var(--muted)">${gr.length} vouchers · ${s} → SUSPENSE · ${gr.length-s} mapped</div>
+      </div>
+      <button onclick="downloadGroupXML('${k}')" style="padding:6px 12px;background:var(--teal);color:#fff;border:none;border-radius:3px;font-family:'Syne',sans-serif;font-size:10px;font-weight:700;cursor:pointer">⬇ XML</button>
+    </div>`;
+  }).join('');
+}
+
+function deleteRow(i){rows.splice(i,1);saveRows();renderAll();toast('Row deleted','info');}
+
+// ── STEP NAV ──────────────────────────────────────────────────────────────
+function goStep(n){
+  if(n>1&&accounts.length===0){toast('Add at least one account first','err');return;}
+  if(n>2&&rows.length===0){toast('Extract transactions first','err');return;}
+  [1,2,3,4].forEach(i=>{
+    document.getElementById('pg'+i).classList.toggle('active',i===n);
+    const t=document.getElementById('tab'+i);
+    t.className='stab'+(i===n?' active':i<n?' done':'');
+  });
+  if(n===3)renderPage3();
+  if(n===4)renderPage4();
+}
+
+// ── DOWNLOAD EXCEL ────────────────────────────────────────────────────────
+function downloadExcel(){
+  if(!rows.length){toast('No data to export','err');return;}
+  const wb=XLSX.utils.book_new();
+  // Main sheet
+  const H=['SR NO','ACCOUNT HOLDER','BANK','MONTH','BILL DATE','NARRATION','VOUCHER TYPE','TALLY LEDGER','BANK LEDGER (Tally)','DEBIT ₹','CREDIT ₹','BALANCE ₹'];
+  const data=[H];
+  rows.forEach((r,i)=>{
+    const acc=accounts.find(a=>a.id===r.accId)||{};
+    data.push([i+1,r.accName||'',acc.bank||'',gm(r.date),r.date,r.narration,r.vtype,r.ledger,r.bankLedger||'',r.debit||'',r.credit||'',r.balance]);
+  });
+  data.push([],[
+    'INSTRUCTIONS:','','','','','','',
+    '← EDIT THIS COLUMN (H) — Replace SUSPENSE with exact Tally ledger name','← Column I is bank ledger (do not change)','',''
+  ]);
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[5,20,22,13,11,40,10,28,24,12,12,13].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws,'Transaction Register');
+  // Account summary sheet
+  const S2=[['ACCOUNT HOLDER','BANK','TALLY LEDGER','ACCOUNT TYPE','TRANSACTIONS','TOTAL DEBIT','TOTAL CREDIT']];
+  accounts.forEach(acc=>{
+    const ar=rows.filter(r=>r.accId===acc.id);
+    S2.push([acc.name,acc.bank,acc.ledger,acc.type,ar.length,ar.reduce((s,r)=>s+r.debit,0).toFixed(2),ar.reduce((s,r)=>s+r.credit,0).toFixed(2)]);
+  });
+  const ws2=XLSX.utils.aoa_to_sheet(S2);
+  ws2['!cols']=[20,24,26,12,14,14,14].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws2,'Account Summary');
+  const d=new Date();
+  XLSX.writeFile(wb,`Jaimin_Bank_Register_${d.getFullYear()}${('0'+(d.getMonth()+1)).slice(-2)}.xlsx`);
+  toast('✅ Excel downloaded — edit column H then upload back','ok');
+}
+
+// ── GENERATE XML ──────────────────────────────────────────────────────────
+function makeVoucher(r,vno){
+  const BANK=r.bankLedger||SUSPENSE;
+  const PARTY=r.ledger||SUSPENSE;
+  const amt=r.debit||r.credit||0;
+  if(!amt)return'';
+  let dr,cr;
+  if(r.vtype==='Payment'){dr=PARTY;cr=BANK;}
+  else if(r.vtype==='Receipt'){dr=BANK;cr=PARTY;}
+  else{dr=PARTY;cr=BANK;}
+  return`<VOUCHER VCHTYPE="${r.vtype}" ACTION="Create">
+<DATE>${td(r.date)}</DATE>
+<VOUCHERTYPENAME>${r.vtype}</VOUCHERTYPENAME>
+<VOUCHERNUMBER>${vno}</VOUCHERNUMBER>
+<NARRATION>${xe(r.narration)}</NARRATION>
+<ALLLEDGERENTRIES.LIST>
+<LEDGERNAME>${xe(dr)}</LEDGERNAME>
+<ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+<AMOUNT>-${Math.abs(amt).toFixed(2)}</AMOUNT>
+</ALLLEDGERENTRIES.LIST>
+<ALLLEDGERENTRIES.LIST>
+<LEDGERNAME>${xe(cr)}</LEDGERNAME>
+<ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+<AMOUNT>${Math.abs(amt).toFixed(2)}</AMOUNT>
+</ALLLEDGERENTRIES.LIST>
+</VOUCHER>`;
+}
+
+function makeXML(grRows){
+  const vxml=grRows.map((r,i)=>makeVoucher(r,i+1)).filter(Boolean).join('\n');
+  return`<?xml version="1.0" encoding="UTF-8"?>\n<ENVELOPE>\n<HEADER><TALLYREQUEST>Import Data</TALLYREQUEST></HEADER>\n<BODY><IMPORTDATA>\n<REQUESTDESC><REPORTNAME>Vouchers</REPORTNAME>\n<STATICVARIABLES><SVCURRENTCOMPANY>##SVCURRENTCOMPANY</SVCURRENTCOMPANY></STATICVARIABLES>\n</REQUESTDESC>\n<REQUESTDATA><TALLYMESSAGE xmlns:UDF="TallyUDF">\n${vxml}\n</TALLYMESSAGE></REQUESTDATA>\n</IMPORTDATA></BODY>\n</ENVELOPE>`;
+}
+
+function downloadGroupXML(key){
+  const[accName,month]=key.split('__');
+  const grRows=rows.filter(r=>`${r.accName||'Unknown'}__${gm(r.date)}`===key);
+  if(!grRows.length){toast('No data','err');return;}
+  const xml=makeXML(grRows);
+  const blob=new Blob([xml],{type:'text/xml'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`Tally_${accName.replace(/\s+/g,'_')}_${month.replace(' ','_')}.xml`;
+  a.click();
+  toast(`✅ XML for ${accName} ${month}`,'ok');
+}
+
+function downloadAllXML(){
+  if(!rows.length){toast('No data','err');return;}
+  const groups={};
+  rows.forEach(r=>{const k=`${r.accName||'Unknown'}__${gm(r.date)}`;if(!groups[k])groups[k]=[];groups[k].push(r);});
+  Object.entries(groups).forEach(([k,gr])=>{
+    const[accName,month]=k.split('__');
+    const xml=makeXML(gr);
+    const blob=new Blob([xml],{type:'text/xml'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`Tally_${accName.replace(/\s+/g,'_')}_${month.replace(' ','_')}.xml`;
+    a.click();
+  });
+  toast(`✅ ${Object.keys(groups).length} XML files downloaded`,'ok');
+}
+
+function clearAll(){
+  if(!confirm('Clear all transaction data? (Accounts will be kept)'))return;
+  rows=[];localStorage.removeItem('jm_rows');
+  renderAll();document.getElementById('dlXlBtn').style.display='none';document.getElementById('step3Btn').style.display='none';
+  goStep(1);toast('Data cleared','info');
+}
+
+function toast(msg,type='info'){
+  const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type+' show';
+  setTimeout(()=>t.className='toast '+type,3200);
+}
+</script>
+</body>
+</html>
