@@ -180,11 +180,13 @@ td.cen{text-align:center}
 <div class="steps">
   <div class="stab active" id="tab1" onclick="goStep(1)"><div class="snum" id="sn1">1</div><div class="slbl">Accounts Setup</div></div>
   <div class="sarr">›</div>
-  <div class="stab" id="tab2" onclick="goStep(2)"><div class="snum" id="sn2">2</div><div class="slbl">Extract Transactions</div></div>
+  <div class="stab" id="tab2" onclick="goStep(2)"><div class="snum" id="sn2">2</div><div class="slbl">Ledger Mapping</div></div>
   <div class="sarr">›</div>
-  <div class="stab" id="tab3" onclick="goStep(3)"><div class="snum" id="sn3">3</div><div class="slbl">Download Excel → Fix Ledgers</div></div>
+  <div class="stab" id="tab3" onclick="goStep(4)"><div class="snum" id="sn3">3</div><div class="slbl">Extract Transactions</div></div>
   <div class="sarr">›</div>
-  <div class="stab" id="tab4" onclick="goStep(4)"><div class="snum" id="sn4">4</div><div class="slbl">Generate Tally XML</div></div>
+  <div class="stab" id="tab4" onclick="goStep(4)"><div class="snum" id="sn4">4</div><div class="slbl">Download Excel → Fix Ledgers</div></div>
+  <div class="sarr">›</div>
+  <div class="stab" id="tab5" onclick="goStep(5)"><div class="snum" id="sn5">5</div><div class="slbl">Generate Tally XML</div></div>
 </div>
 
 <div class="layout">
@@ -234,7 +236,7 @@ td.cen{text-align:center}
       <div class="slabel">Actions</div>
       <button class="btn b-ink" id="extractBtn" onclick="runExtraction()">⚡ Extract Transactions</button>
       <button class="btn b-gold" id="dlXlBtn" onclick="downloadExcel()" style="display:none">⬇ Download Excel</button>
-      <button class="btn b-teal" id="step3Btn" onclick="goStep(3)" style="display:none">→ Fix Ledgers</button>
+      <button class="btn b-teal" id="step3Btn" onclick="goStep(4)" style="display:none">→ Fix Ledgers</button>
       <button class="btn b-ghost" onclick="clearAll()" style="margin-top:4px">✕ Clear all data</button>
     </div>
 
@@ -324,38 +326,136 @@ td.cen{text-align:center}
           If ledger doesn't exist → entry goes to SUSPENSE → No error ✅
         </div>
       </div>
+
+      <!-- TALLY LEDGER LIST MANAGER -->
+      <div style="margin-top:16px;background:#fff;border:1px solid var(--border);border-radius:5px;overflow:hidden">
+        <div style="background:var(--ink);padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+          <div style="color:#fff;font-size:12px;font-weight:700">📋 Tally Ledger List</div>
+          <div style="font-size:10px;color:#888">Used as dropdown in Excel — paste your full ledger list</div>
+        </div>
+        <div style="padding:14px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6">
+            Paste your Tally ledger names below (one per line). These will appear as a <b>dropdown list in Excel column H</b> so you can select the correct ledger quickly instead of typing manually.
+          </div>
+          <div style="display:flex;gap:10px;margin-bottom:10px">
+            <textarea id="ledgerListInp" style="flex:1;height:140px;padding:8px;border:1.5px solid var(--border);border-radius:4px;font-size:11px;font-family:JetBrains Mono,monospace;resize:vertical;color:var(--ink)" placeholder="Paste ledger names here, one per line:&#10;SUSPENSE&#10;BANK CHARGES&#10;BANK INTEREST INCOME&#10;Pioneer Finmart&#10;ICICI LOMBARD GIC COMMISSION&#10;ROHA HOUSING FINANCE PRIVATE LIMITED&#10;..."></textarea>
+            <div style="display:flex;flex-direction:column;gap:6px;width:130px">
+              <button onclick="saveLedgerList()" style="padding:8px;background:var(--ink);color:#fff;border:none;border-radius:4px;font-family:Syne,sans-serif;font-size:11px;font-weight:700;cursor:pointer">💾 Save List</button>
+              <button onclick="clearLedgerList()" style="padding:8px;background:none;border:1.5px solid var(--border);border-radius:4px;font-family:Syne,sans-serif;font-size:11px;color:var(--muted);cursor:pointer">✕ Clear</button>
+              <div id="ledgerCount" style="font-size:10px;color:var(--teal);text-align:center;padding:4px;background:var(--lteal);border-radius:3px;display:none"></div>
+            </div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);background:var(--cream);padding:8px;border-radius:3px;line-height:1.6">
+            💡 <b>How to get from Tally:</b> Gateway → Chart of Accounts → Ledgers → Print/Export list → Copy names here
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- PAGE 2: EXTRACT -->
-    <div class="pg" id="pg2">
+    <!-- PAGE 2: LEDGER MAPPING -->
+    <div class="pg" id="pg2_OLD">
+      <div class="pg-hdr">
+        <h2>Step 2 — Ledger Mapping</h2>
+        <p>Paste your complete Tally ledger list → Map transaction keywords to ledger names → Auto-applied during extraction.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+
+        <!-- LEFT: PASTE LEDGER LIST -->
+        <div style="background:#fff;border:1px solid var(--border);border-radius:5px;overflow:hidden">
+          <div style="background:var(--ink);padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+            <div style="color:#fff;font-size:12px;font-weight:700">📋 Tally Ledger List</div>
+            <div id="ledgerSavedBadge" style="font-size:9px;background:var(--teal);color:#fff;padding:2px 8px;border-radius:10px;display:none">✓ Saved</div>
+          </div>
+          <div style="padding:14px">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6">
+              Paste your complete Tally ledger list (one per line). This becomes the <b>dropdown in Excel column H</b>.
+            </div>
+            <textarea id="ledgerListInp" style="width:100%;height:200px;padding:8px;border:1.5px solid var(--border);border-radius:4px;font-size:11px;font-family:JetBrains Mono,monospace;resize:vertical;color:var(--ink)" 
+              placeholder="Paste all ledger names from Tally, one per line:&#10;&#10;SUSPENSE&#10;BANK CHARGES&#10;BANK INTEREST INCOME&#10;Pioneer Finmart&#10;ICICI LOMBARD GIC COMMISSION&#10;ROHA HOUSING FINANCE PRIVATE LIMITED&#10;NISHITBHAI SHAH&#10;RIPAL R DESAI&#10;SHREEJI ASSOCIATES&#10;Zerodha Broking Ltd&#10;CARECAY PRIVATE LIMITED&#10;LIC of India&#10;HEMENDRA B SHAH HUF&#10;Mrs Shah Dhara Jaimin&#10;Mrs Shah Nita&#10;..."></textarea>
+            <div style="display:flex;gap:6px;margin-top:8px">
+              <button onclick="saveLedgerList()" style="flex:1;padding:8px;background:var(--ink);color:#fff;border:none;border-radius:4px;font-family:Syne,sans-serif;font-size:11px;font-weight:700;cursor:pointer">💾 Save Ledger List</button>
+              <button onclick="clearLedgerList()" style="padding:8px 10px;background:none;border:1.5px solid var(--border);border-radius:4px;font-family:Syne,sans-serif;font-size:11px;color:var(--muted);cursor:pointer">✕ Clear</button>
+            </div>
+            <div id="ledgerCountMsg" style="font-size:10px;color:var(--teal);margin-top:6px;display:none;font-weight:600"></div>
+            <div style="font-size:9px;color:var(--muted);background:var(--cream);padding:7px;border-radius:3px;margin-top:8px;line-height:1.5">
+              💡 <b>From Tally:</b> Gateway → Chart of Accounts → Ledgers → select all → Ctrl+C → Paste here
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: KEYWORD MAPPING -->
+        <div style="background:#fff;border:1px solid var(--border);border-radius:5px;overflow:hidden">
+          <div style="background:var(--teal);padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+            <div style="color:#fff;font-size:12px;font-weight:700">🔗 Keyword → Ledger Mapping</div>
+            <button onclick="addMapping()" style="padding:3px 10px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:3px;color:#fff;font-size:10px;font-weight:700;cursor:pointer;font-family:Syne,sans-serif">+ Add Rule</button>
+          </div>
+          <div style="padding:10px 14px">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.5">
+              If bank narration <b>contains</b> the keyword → assign this Tally ledger automatically.
+            </div>
+            <div id="mappingList" style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
+            <div style="display:flex;gap:6px;margin-top:8px">
+              <button onclick="saveMapping()" style="flex:1;padding:7px;background:var(--teal);color:#fff;border:none;border-radius:4px;font-family:Syne,sans-serif;font-size:11px;font-weight:700;cursor:pointer">💾 Save All Mappings</button>
+              <button onclick="loadDefaultMappings()" style="padding:7px 10px;background:none;border:1.5px solid var(--border);border-radius:4px;font-family:Syne,sans-serif;font-size:10px;color:var(--muted);cursor:pointer">↺ Defaults</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAPPING PREVIEW TABLE -->
+      <div class="tbl-card">
+        <div class="tbl-hdr">
+          <div class="tbl-hdr-t">Active Mapping Rules</div>
+          <div style="font-size:10px;color:var(--muted)" id="mappingCount">0 rules active</div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>#</th><th>KEYWORD (in bank narration)</th><th>→ TALLY LEDGER</th><th>VOUCHER TYPE OVERRIDE</th><th></th>
+            </tr></thead>
+            <tbody id="mappingTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <button class="btn b-teal" style="flex:1" onclick="goStep(4)">→ Proceed to Extract Transactions</button>
+        <button class="btn b-ghost" style="width:100px" onclick="goStep(1)">← Back</button>
+      </div>
+    </div>
+
+    <!-- PAGE 3: EXTRACT (was page 2) -->
+    <!-- PAGE 3: EXTRACT -->
+    <div class="pg" id="pg3">
       <div class="pg-hdr">
         <h2>Step 2 — Extract Transactions</h2>
         <p>Select account → upload PDF → AI extracts all transactions automatically.</p>
       </div>
 
-      <div id="empty2" class="empty"><div class="empty-ico">🏦</div><div class="empty-t">No transactions yet</div><div class="empty-s">Select account from sidebar → Upload PDF → Click Extract</div></div>
-      <div id="table2wrap" style="display:none">
-        <div class="sc-grid" id="scg2">
-          <div class="sc"><div class="sc-l">Transactions</div><div class="sc-v" id="s2a">0</div></div>
-          <div class="sc"><div class="sc-l">Total Debit</div><div class="sc-v sv-r" id="s2b">₹0</div></div>
-          <div class="sc"><div class="sc-l">Total Credit</div><div class="sc-v sv-t" id="s2c">₹0</div></div>
-          <div class="sc"><div class="sc-l">Net</div><div class="sc-v sv-g" id="s2d">₹0</div></div>
+      <div id="empty3" class="empty"><div class="empty-ico">🏦</div><div class="empty-t">No transactions yet</div><div class="empty-s">Select account from sidebar → Upload PDF → Click Extract</div></div>
+      <div id="table3wrap" style="display:none">
+        <div class="sc-grid" id="scg3">
+          <div class="sc"><div class="sc-l">Transactions</div><div class="sc-v" id="s3a">0</div></div>
+          <div class="sc"><div class="sc-l">Total Debit</div><div class="sc-v sv-r" id="s3b">₹0</div></div>
+          <div class="sc"><div class="sc-l">Total Credit</div><div class="sc-v sv-t" id="s3c">₹0</div></div>
+          <div class="sc"><div class="sc-l">Net</div><div class="sc-v sv-g" id="s3d">₹0</div></div>
         </div>
         <div class="tbl-card">
-          <div class="tbl-hdr"><div class="tbl-hdr-t">Extracted Transactions</div><div style="font-size:9px;color:var(--muted)" id="t2cnt"></div></div>
+          <div class="tbl-hdr"><div class="tbl-hdr-t">Extracted Transactions</div><div style="font-size:9px;color:var(--muted)" id="t3cnt"></div></div>
           <div class="tbl-wrap">
             <table>
               <thead><tr><th>#</th><th>DATE</th><th>ACCOUNT</th><th>NARRATION</th><th>TYPE</th><th>DEBIT ₹</th><th>CREDIT ₹</th><th>TALLY LEDGER</th><th></th></tr></thead>
-              <tbody id="tbody2"></tbody>
-              <tfoot><tr class="tfoot-row"><td colspan="4">TOTAL</td><td></td><td id="tf2d">₹0</td><td id="tf2c">₹0</td><td></td><td></td></tr></tfoot>
+              <tbody id="tbody3_entries"></tbody>
+              <tfoot><tr class="tfoot-row"><td colspan="4">TOTAL</td><td></td><td id="tf3d">₹0</td><td id="tf3c">₹0</td><td></td><td></td></tr></tfoot>
             </table>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- PAGE 3: FIX LEDGERS -->
-    <div class="pg" id="pg3">
+    <!-- PAGE 4: FIX LEDGERS -->
+    <div class="pg" id="pg4">
       <div class="pg-hdr">
         <h2>Step 3 — Download Excel → Fix Ledgers → Upload Back</h2>
         <p>This is the key step. Edit column <b>H (TALLY LEDGER)</b> in Excel — replace SUSPENSE with correct Tally ledger names. Upload back and all names are updated.</p>
@@ -386,7 +486,7 @@ td.cen{text-align:center}
             <div style="font-size:10px;color:#3D8A7A;margin-top:2px">Upload your edited .xlsx file</div>
           </div>
           <input type="file" id="xlFile" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
-          <div id="xlStatus" style="font-size:10px;color:var(--teal);margin-top:5px;display:none;font-weight:600"></div>
+          <div id="xlStatus4" style="font-size:10px;color:var(--teal);margin-top:5px;display:none;font-weight:600"></div>
           <div style="font-size:10px;color:var(--muted);margin-top:6px">Or skip this step → proceed to XML with SUSPENSE for unmatched entries</div>
         </div>
       </div>
@@ -394,12 +494,12 @@ td.cen{text-align:center}
       <div class="tbl-card">
         <div class="tbl-hdr">
           <div class="tbl-hdr-t">Ledger Mapping Status</div>
-          <div style="font-size:10px"><span id="matchedCnt" style="color:var(--teal);font-weight:700">0</span> mapped · <span id="suspCnt" style="color:var(--gold);font-weight:700">0</span> → SUSPENSE</div>
+          <div style="font-size:10px"><span id="matchedCnt4" style="color:var(--teal);font-weight:700">0</span> mapped · <span id="suspCnt4" style="color:var(--gold);font-weight:700">0</span> → SUSPENSE</div>
         </div>
         <div class="tbl-wrap">
           <table>
             <thead><tr><th>#</th><th>DATE</th><th>ACCOUNT</th><th>NARRATION</th><th>TYPE</th><th>AMOUNT ₹</th><th>TALLY LEDGER</th><th>STATUS</th></tr></thead>
-            <tbody id="tbody3"></tbody>
+            <tbody id="tbody4"></tbody>
           </table>
         </div>
       </div>
@@ -410,8 +510,8 @@ td.cen{text-align:center}
       </div>
     </div>
 
-    <!-- PAGE 4: GENERATE XML -->
-    <div class="pg" id="pg4">
+    <!-- PAGE 5: GENERATE XML -->
+    <div class="pg" id="pg5">
       <div class="pg-hdr">
         <h2>Step 4 — Generate &amp; Import to Tally</h2>
         <p>XML files are split by <b>account + month</b>. Import one at a time in Tally.</p>
@@ -421,8 +521,8 @@ td.cen{text-align:center}
         <b>Guaranteed No Error:</b> Every ledger name is validated before XML generation. Unknown ledgers → SUSPENSE. Tally will accept every XML file without any error.
       </div>
 
-      <div id="xmlStats" style="margin-bottom:14px"></div>
-      <div id="xmlList"></div>
+      <div id="xmlStats5" style="margin-bottom:14px"></div>
+      <div id="xmlList5"></div>
 
       <div style="background:#fff;border:1px solid var(--border);border-radius:5px;padding:14px;margin-bottom:12px">
         <div style="font-size:12px;font-weight:700;margin-bottom:10px">How to Import in TallyPrime</div>
@@ -448,7 +548,7 @@ td.cen{text-align:center}
 
       <div style="display:flex;gap:10px">
         <button class="btn b-ink" style="flex:1" onclick="downloadAllXML()">⬇ Download All XML Files</button>
-        <button class="btn b-ghost" style="width:100px" onclick="goStep(3)">← Back</button>
+        <button class="btn b-ghost" style="width:100px" onclick="goStep(4)">← Back</button>
       </div>
     </div>
 
@@ -506,6 +606,144 @@ const KNOWN = {
   'BANK CHARGES':'BANK CHARGES',
 };
 
+// ── ACCOUNTING NARRATION GENERATOR ───────────────────────────────────────
+function makeNarration(raw, vtype, debit, credit){
+  const r = (raw||'').trim();
+  const amt = debit || credit;
+  const u = r.toUpperCase();
+
+  // Extract clean party name from bank reference
+  function extractParty(s){
+    // Remove transaction codes, bank codes, slashes
+    let p = s
+      .replace(/^(NEFT|RTGS|IMPS|UPI|IFT|NACH|CHQ|ECOM|BILLPAY|BB|IPO|FD)[\/\-\s]*(OPM|OPW|DR|CR|MOB|CR)?[\/\-]?/i,'')
+      .replace(/[A-Z0-9]{10,}/g,' ')   // remove long codes
+      .replace(/\/[A-Z0-9]+/g,' ')      // remove /HDFC0000240 type codes
+      .replace(/\s+/g,' ')
+      .trim();
+    // Get first meaningful part
+    const parts = p.split(/[\/\-]/);
+    return parts[0].trim() || s.trim();
+  }
+
+  // Detect transaction type and build narration
+  if(u.includes('NEFT') || u.includes('RTGS') || u.includes('IMPS') || u.includes('IFT')){
+    const party = extractParty(r);
+    if(u.includes('PIONEER FINMART')) return 'Being commission received from Pioneer Finmart';
+    if(u.includes('ICICI LOMBARD')) return 'Being insurance commission received from ICICI Lombard General Insurance';
+    if(u.includes('ROHA HOUSING')) return 'Being EMI payment to Roha Housing Finance Pvt Ltd';
+    if(u.includes('ZERODHA')) return vtype==='Receipt'?'Being trading payout received from Zerodha':'Being funds transferred to Zerodha for trading';
+    if(u.includes('SHREEJI')) return 'Being GST filing charges paid to Shreeji Associates';
+    if(u.includes('JM FINANCIAL')) return 'Being mutual fund redemption/payout from JM Financial';
+    if(u.includes('CARECAY')) return vtype==='Receipt'?'Being amount received from Carecay Pvt Ltd':'Being amount paid to Carecay Pvt Ltd';
+    if(u.includes('RAJAN') || u.includes('RIPAL')) return vtype==='Receipt'?'Being loan repayment received from Ripal Rajan Desai':'Being loan amount paid to Ripal Rajan Desai';
+    if(u.includes('NISHITH') || u.includes('NISHITBHAI')) return vtype==='Receipt'?'Being amount received from Nishitbhai Shah':'Being loan amount paid to Nishitbhai Shah';
+    if(u.includes('HEMENDRA') || u.includes('HUF')) return vtype==='Receipt'?'Being amount received from Hemendra B Shah HUF':'Being amount transferred to Hemendra B Shah HUF';
+    if(u.includes('SHAH DHARA') || u.includes('DHARA')) return vtype==='Receipt'?'Being amount received from Dhara Shah':'Being amount transferred to Dhara Shah';
+    if(u.includes('SHAH NITA') || u.includes('NITA')) return vtype==='Receipt'?'Being amount received from Nita Shah':'Being amount transferred to Nita Shah';
+    if(u.includes('KUNJAL')) return vtype==='Receipt'?'Being amount received from Kunjal Chandraka':'Being amount paid to Kunjal Chandraka';
+    if(u.includes('BANDHAN LIFE')) return 'Being insurance commission received from Bandhan Life Insurance';
+    if(vtype==='Receipt') return `Being amount received via ${r.substring(0,4).toUpperCase()} transfer`;
+    return `Being payment made via ${r.substring(0,4).toUpperCase()} transfer`;
+  }
+
+  if(u.includes('UPI')){
+    if(u.includes('ZERODHA')) return 'Being funds transferred to Zerodha for trading';
+    if(u.includes('CARECAY')) return 'Being payment to Carecay workshop';
+    if(u.includes('ONECARD') || u.includes('ONE CARD')) return 'Being credit card payment - OneCard';
+    if(u.includes('LIC')) return 'Being LIC premium payment';
+    if(u.includes('DIESEL') || u.includes('PETROL')) return 'Being vehicle fuel expense';
+    if(u.includes('PHYSICS') || u.includes('WALLAH')) return 'Being education fees payment';
+    if(u.includes('RELIANCE') || u.includes('SHOPPERS')) return 'Being retail purchase expense';
+    if(u.includes('DINNER') || u.includes('FOOD') || u.includes('SNACKS') || u.includes('PANIPURI')) return 'Being food and entertainment expense';
+    if(u.includes('TORRENT')) return 'Being electricity bill payment - Torrent Power';
+    if(u.includes('HDFC ERG') || u.includes('HDFCERG')) return 'Being insurance premium payment - HDFC Ergo';
+    if(vtype==='Receipt') return 'Being amount received via UPI';
+    return 'Being payment made via UPI';
+  }
+
+  if(u.includes('NACH')){
+    if(u.includes('FIN INDIAN') || u.includes('INDIANCLRC')) return 'Being SIP/mutual fund instalment via NACH';
+    if(u.includes('CENTRAL') && u.includes('BANK')) return 'Being loan EMI payment - Central Bank of India';
+    if(u.includes('YES BANK')) return 'Being loan EMI payment - Yes Bank';
+    if(u.includes('WIPRO')) return 'Being dividend received - Wipro Ltd';
+    if(u.includes('TCS')) return 'Being dividend received - Tata Consultancy Services';
+    if(u.includes('REC')) return 'Being dividend received - REC Ltd';
+    if(u.includes('POWER FINANCE')) return 'Being dividend received - Power Finance Corporation';
+    if(u.includes('POWER GRID')) return 'Being dividend received - Power Grid Corporation';
+    if(u.includes('RELIANCE')) return 'Being dividend received - Reliance Industries';
+    if(u.includes('HERO MOTOCORP')) return 'Being dividend received - Hero MotoCorp';
+    if(u.includes('TATA MOTORS')) return 'Being dividend received - Tata Motors';
+    if(u.includes('JSW')) return 'Being dividend received - JSW Steel';
+    if(u.includes('HDB')) return 'Being dividend received - HDB Financial Services';
+    if(u.includes('HYUNDAI')) return 'Being dividend received - Hyundai Motor India';
+    if(u.includes('TATAAIAL') || u.includes('CTTAT')) return 'Being insurance premium payment - Tata AIA Life';
+    if(u.includes('INDUSIND')) return 'Being credit card payment - IndusInd Bank';
+    if(u.includes('SARANGPUR')) return 'Being dividend received - Sarangpur Co-op Bank';
+    if(u.includes('JIO')) return 'Being dividend received - Jio Financial Services';
+    if(u.includes('IEX') || u.includes('ENERGY EXCH')) return 'Being dividend received - Indian Energy Exchange';
+    if(u.includes('TTL') || u.includes('TTLFIN')) return 'Being dividend received - TTL Finance';
+    if(u.includes('FBL')) return 'Being dividend received - FBL Finance';
+    if(u.includes('HARSHA')) return 'Being dividend received - Harsha Engineers';
+    if(u.includes('GOLDMINE')) return 'Being dividend received - Goldmines Telefilms';
+    if(vtype==='Receipt') return 'Being amount credited via NACH/ECS';
+    return 'Being instalment/EMI paid via NACH';
+  }
+
+  if(u.includes('CHQ') || u.includes('CHEQUE')){
+    if(u.includes('LIC')) return 'Being LIC premium payment by cheque';
+    if(u.includes('HUF')) return 'Being amount transferred to HUF account by cheque';
+    if(u.includes('JAYABEN') || u.includes('JAYSHREE')) return 'Being personal payment by cheque';
+    if(u.includes('PRAHAN')) return 'Being school/personal expense for Prahan Shah';
+    if(u.includes('KAHAN')) return 'Being school/personal expense for Kahan Shah';
+    if(u.includes('DEPOSIT') || u.includes('TRF TO')) return 'Being amount transferred to FD/deposit account';
+    if(u.includes('EQUITAS')) return 'Being amount transferred to Equitas Bank account';
+    if(u.includes('RIYA') || u.includes('AUTOTORQUE')) return 'Being vehicle purchase payment to Riya Autotorque';
+    if(vtype==='Receipt') return 'Being cheque deposit/transfer received';
+    return 'Being payment by cheque';
+  }
+
+  if(u.includes('ECOM') || u.includes('INDIAIDEAS')){
+    if(u.includes('ONECARD') || u.includes('ONE CARD')) return 'Being credit card payment - OneCard';
+    if(u.includes('LIC')) return 'Being LIC premium payment online';
+    if(u.includes('KAHAN')) return 'Being school fee payment - Kahan Shah';
+    if(u.includes('PRAHAN')) return 'Being school fee payment - Prahan Shah';
+    if(u.includes('CRED')) return 'Being credit card payment via CRED';
+    return 'Being online payment via payment gateway';
+  }
+
+  if(u.includes('BILLPAY')){
+    if(u.includes('FED CREDIT') || u.includes('FEDCREDIT')) return 'Being credit card payment - Federal Bank';
+    if(u.includes('SBI CARD')) return 'Being credit card payment - SBI Card';
+    if(u.includes('INDUSIND')) return 'Being credit card payment - IndusInd Bank';
+    return 'Being bill payment';
+  }
+
+  if(u.includes('DEBIT INTEREST') || u.includes('INTEREST TRANS')){
+    return 'Being bank charges/overdraft interest debited';
+  }
+  if(u.includes('MONTHLY SAVINGS INTEREST') || u.includes('SAVINGS INTEREST CREDIT')){
+    return 'Being savings account interest credited';
+  }
+  if(u.includes('FD') && u.includes('MATUR')){
+    return 'Being fixed deposit maturity amount credited';
+  }
+  if(u.includes('IPO')){
+    return 'Being IPO application payment';
+  }
+  if(u.includes('CASH DEPOSIT')){
+    return 'Being cash deposited into bank account';
+  }
+  if(u.includes('REV OF CHARGE') || u.includes('AMB NON')){
+    return 'Being bank charge reversal credited';
+  }
+
+  // Generic fallback
+  if(vtype==='Receipt') return `Being amount credited — ${r.substring(0,40)}`;
+  if(vtype==='Journal') return `Being bank charges/interest — ${r.substring(0,40)}`;
+  return `Being amount debited — ${r.substring(0,40)}`;
+}
+
 function matchLedger(narration){
   const n=(narration||'').toUpperCase();
   for(const[k,v]of Object.entries(KNOWN)){if(n.includes(k.toUpperCase()))return v;}
@@ -517,6 +755,7 @@ window.onload=()=>{
   document.getElementById('dateBadge').textContent=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
   const k=localStorage.getItem('jm_key');if(k){document.getElementById('apiKey').value=k;document.getElementById('keyOk').style.display='block';}
   try{accounts=JSON.parse(localStorage.getItem('jm_accounts')||'[]');}catch(e){accounts=[];}
+  setTimeout(loadLedgerData, 100);
   try{rows=JSON.parse(localStorage.getItem('jm_rows')||'[]');}catch(e){rows=[];}
   renderAccounts();populateAccSel();renderAll();
   setupDrop('dz','fi',addFiles);
@@ -721,8 +960,12 @@ async function runExtraction(){
     pm.textContent=`${acc.name}: ${i+1}/${qFiles.length} — ${qFiles[i].name}`;
     const items=await extractPDF(qFiles[i],i,apiKey);
     items.forEach(it=>{
+      const vt=it.vtype||'Payment';
       rows.push({
-        date:it.date,narration:it.narration,vtype:it.vtype||'Payment',
+        date:it.date,
+        narration:it.narration,
+        tallyNarration:makeNarration(it.narration,vt,n(it.debit),n(it.credit)),
+        vtype:vt,
         debit:n(it.debit),credit:n(it.credit),balance:n(it.balance),
         ledger:matchLedger(it.narration),
         accId:acc.id,accName:acc.name,bankLedger:acc.ledger
@@ -780,8 +1023,8 @@ function importExcel(event){
         }
       }
       saveRows();renderAll();
-      document.getElementById('xlStatus').style.display='block';
-      document.getElementById('xlStatus').textContent=`✅ ${updated} ledger names updated`;
+      document.getElementById('xlStatus4').style.display='block';
+      document.getElementById('xlStatus4').textContent=`✅ ${updated} ledger names updated`;
       toast(`✅ ${updated} ledger names updated from Excel`,'ok');
     }catch(err){toast('Error reading Excel: '+err.message,'err');}
   };
@@ -790,31 +1033,32 @@ function importExcel(event){
 
 // ── RENDER ────────────────────────────────────────────────────────────────
 function renderAll(){
+  
   if(rows.length>0){document.getElementById('dlXlBtn').style.display='block';document.getElementById('step3Btn').style.display='block';}
   renderPage2();renderPage3();renderPage4();
 }
 
-function renderPage2(){
+function renderPage5(){
   const empty=rows.length===0;
-  document.getElementById('empty2').style.display=empty?'block':'none';
-  document.getElementById('table2wrap').style.display=empty?'none':'block';
+  document.getElementById('empty3').style.display=empty?'block':'none';
+  document.getElementById('table3wrap').style.display=empty?'none':'block';
   if(empty)return;
   const tDr=rows.reduce((s,r)=>s+r.debit,0),tCr=rows.reduce((s,r)=>s+r.credit,0);
-  document.getElementById('s2a').textContent=rows.length;
-  document.getElementById('s2b').textContent=inr(tDr);
-  document.getElementById('s2c').textContent=inr(tCr);
-  document.getElementById('s2d').textContent=inr(tCr-tDr);
-  document.getElementById('tf2d').textContent=inr(tDr);
-  document.getElementById('tf2c').textContent=inr(tCr);
-  document.getElementById('t2cnt').textContent=rows.length+' entries';
-  document.getElementById('tbody2').innerHTML=rows.map((r,i)=>{
+  document.getElementById('s3a').textContent=rows.length;
+  document.getElementById('s3b').textContent=inr(tDr);
+  document.getElementById('s3c').textContent=inr(tCr);
+  document.getElementById('s3d').textContent=inr(tCr-tDr);
+  document.getElementById('tf3d').textContent=inr(tDr);
+  document.getElementById('tf3c').textContent=inr(tCr);
+  document.getElementById('t3cnt').textContent=rows.length+' entries';
+  document.getElementById('tbody3_entries').innerHTML=rows.map((r,i)=>{
     const vbc=r.vtype==='Payment'?'vb-p':r.vtype==='Receipt'?'vb-r':'vb-j';
     const isSusp=r.ledger===SUSPENSE;
     return`<tr>
       <td class="cen mono">${i+1}</td>
       <td class="mono">${r.date}</td>
       <td style="font-size:10px;color:var(--teal)">${r.accName||''}</td>
-      <td>${r.narration}</td>
+      <td><div style="font-size:10px">${r.narration}</div><div style="font-size:9px;color:var(--teal);margin-top:2px;font-style:italic">${r.tallyNarration||''}</div></td>
       <td class="cen"><span class="vb ${vbc}">${r.vtype}</span></td>
       <td class="num">${r.debit?inr(r.debit):''}</td>
       <td class="num">${r.credit?inr(r.credit):''}</td>
@@ -824,12 +1068,12 @@ function renderPage2(){
   }).join('');
 }
 
-function renderPage3(){
+function renderPage5(){
   if(!rows.length)return;
   const matched=rows.filter(r=>r.ledger!==SUSPENSE).length;
-  document.getElementById('matchedCnt').textContent=matched;
-  document.getElementById('suspCnt').textContent=rows.length-matched;
-  document.getElementById('tbody3').innerHTML=rows.map((r,i)=>{
+  document.getElementById('matchedCnt4').textContent=matched;
+  document.getElementById('suspCnt4').textContent=rows.length-matched;
+  document.getElementById('tbody4').innerHTML=rows.map((r,i)=>{
     const amt=r.debit||r.credit;
     const isSusp=r.ledger===SUSPENSE;
     return`<tr>
@@ -844,7 +1088,7 @@ function renderPage3(){
   }).join('');
 }
 
-function renderPage4(){
+function renderPage5(){
   if(!rows.length)return;
   // Group by account + month
   const groups={};
@@ -855,14 +1099,14 @@ function renderPage4(){
   });
   const keys=Object.keys(groups);
   const susp=rows.filter(r=>r.ledger===SUSPENSE).length;
-  document.getElementById('xmlStats').innerHTML=`
+  document.getElementById('xmlStats5').innerHTML=`
     <div class="sc-grid">
       <div class="sc"><div class="sc-l">Total Vouchers</div><div class="sc-v">${rows.length}</div></div>
       <div class="sc"><div class="sc-l">XML Files</div><div class="sc-v sv-g">${keys.length}</div></div>
       <div class="sc"><div class="sc-l">Mapped</div><div class="sc-v sv-t">${rows.length-susp}</div></div>
       <div class="sc"><div class="sc-l">→ SUSPENSE</div><div class="sc-v sv-g">${susp}</div></div>
     </div>`;
-  document.getElementById('xmlList').innerHTML=keys.map(k=>{
+  document.getElementById('xmlList5').innerHTML=keys.map(k=>{
     const[accName,month]=k.split('__');
     const gr=groups[k];
     const s=gr.filter(r=>r.ledger===SUSPENSE).length;
@@ -878,17 +1122,148 @@ function renderPage4(){
 
 function deleteRow(i){rows.splice(i,1);saveRows();renderAll();toast('Row deleted','info');}
 
+
+// ── LEDGER LIST & MAPPING ─────────────────────────────────────────────────
+let mappingRules = []; // [{keyword, ledger, vtype}]
+let ledgerList = [];
+
+const DEFAULT_MAPPINGS = [
+  {keyword:'PIONEER FINMART', ledger:'Pioneer Finmart', vtype:''},
+  {keyword:'ICICI LOMBARD', ledger:'ICICI LOMBARD GIC COMMISSION', vtype:'Receipt'},
+  {keyword:'ROHA HOUSING', ledger:'ROHA HOUSING FINANCE PRIVATE LIMITED', vtype:'Payment'},
+  {keyword:'ZERODHA', ledger:'Zerodha Broking Ltd', vtype:''},
+  {keyword:'SHREEJI ASSOCIATES', ledger:'SHREEJI ASSOCIATES', vtype:'Payment'},
+  {keyword:'NISHITH ATUL', ledger:'NISHITBHAI SHAH', vtype:''},
+  {keyword:'NISHITBHAI', ledger:'NISHITBHAI SHAH', vtype:''},
+  {keyword:'RIPAL RAJAN', ledger:'RIPAL R DESAI', vtype:''},
+  {keyword:'CARECAY PRIVATE', ledger:'CARECAY PRIVATE LIMITED', vtype:''},
+  {keyword:'CARECAY CARS', ledger:'CARECAY CARS PVT LTD', vtype:''},
+  {keyword:'JM FINANCIAL', ledger:'JM FINANCIAL SERVICES', vtype:'Receipt'},
+  {keyword:'BANDHAN LIFE', ledger:'BANDHAN LIFE INSURANCE', vtype:'Receipt'},
+  {keyword:'HEMENDRA', ledger:'HEMENDRA B SHAH HUF', vtype:''},
+  {keyword:'SHAH DHARA', ledger:'Mrs Shah Dhara Jaimin', vtype:''},
+  {keyword:'SHAH NITA', ledger:'Mrs Shah Nita', vtype:''},
+  {keyword:'KUNJAL', ledger:'KUNJAL CHANDRAKA', vtype:''},
+  {keyword:'DEBIT INTEREST', ledger:'BANK CHARGES', vtype:'Journal'},
+  {keyword:'MONTHLY SAVINGS INTEREST', ledger:'BANK INTEREST INCOME', vtype:'Receipt'},
+  {keyword:'WIPRO', ledger:'WIPRO LIMITED DIVIDEND', vtype:'Receipt'},
+  {keyword:'REC LIMITED', ledger:'REC LIMITED DIVIDEND', vtype:'Receipt'},
+  {keyword:'POWER FINANCE', ledger:'POWER FINANCE CORP DIVIDEND', vtype:'Receipt'},
+  {keyword:'POWER GRID', ledger:'POWER GRID DIVIDEND', vtype:'Receipt'},
+  {keyword:'HERO MOTOCORP', ledger:'HERO MOTOCORP DIVIDEND', vtype:'Receipt'},
+  {keyword:'TCS', ledger:'TCS DIVIDEND', vtype:'Receipt'},
+  {keyword:'ONECARD', ledger:'ONECARD CREDIT CARD', vtype:'Payment'},
+  {keyword:'FIN INDIAN CLEARING', ledger:'SUSPENSE', vtype:'Payment'},
+  {keyword:'INDIANCLRCORPLTD', ledger:'SUSPENSE', vtype:'Payment'},
+];
+
+function loadLedgerData(){
+  try{
+    const ll=localStorage.getItem('jm_ledgers');
+    if(ll){ledgerList=JSON.parse(ll);document.getElementById('ledgerListInp').value=ledgerList.join('\n');showLedgerCount();}
+    const mr=localStorage.getItem('jm_mappings');
+    if(mr){mappingRules=JSON.parse(mr);}else{mappingRules=[...DEFAULT_MAPPINGS];}
+    renderMappingTable();
+  }catch(e){mappingRules=[...DEFAULT_MAPPINGS];}
+}
+
+function showLedgerCount(){
+  const el=document.getElementById('ledgerCountMsg');
+  const badge=document.getElementById('ledgerSavedBadge');
+  if(el&&ledgerList.length){el.style.display='block';el.textContent='✅ '+ledgerList.length+' ledgers saved — will appear as Excel dropdown';}
+  if(badge&&ledgerList.length){badge.style.display='block';}
+}
+
+
+
+
+
+
+
+function addMapping(){
+  mappingRules.push({keyword:'',ledger:'SUSPENSE',vtype:''});
+  renderMappingTable();
+}
+
+function removeMapping(i){mappingRules.splice(i,1);renderMappingTable();}
+
+function loadDefaultMappings(){
+  mappingRules=[...DEFAULT_MAPPINGS];
+  renderMappingTable();
+  toast('Default mappings loaded','info');
+}
+
+function saveMapping(){
+  // Read current values from inputs
+  const rows_m=document.querySelectorAll('.map-row');
+  mappingRules=[];
+  rows_m.forEach(row=>{
+    const k=row.querySelector('.map-kw').value.trim();
+    const l=row.querySelector('.map-ldg').value.trim();
+    const v=row.querySelector('.map-vt').value;
+    if(k&&l)mappingRules.push({keyword:k,ledger:l,vtype:v});
+  });
+  localStorage.setItem('jm_mappings',JSON.stringify(mappingRules));
+  renderMappingTable();
+  toast('✅ '+mappingRules.length+' mapping rules saved','ok');
+}
+
+function renderMappingTable(){
+  const ll=ledgerList.length>0?ledgerList:['SUSPENSE'];
+  const opts=ll.map(l=>`<option value="${l}">${l}</option>`).join('');
+  const vtOpts=`<option value="">Auto</option><option value="Payment">Payment</option><option value="Receipt">Receipt</option><option value="Journal">Journal</option>`;
+  document.getElementById('mappingList').innerHTML=mappingRules.map((r,i)=>`
+    <div class="map-row" style="display:grid;grid-template-columns:1fr 1fr 90px 28px;gap:4px;align-items:center">
+      <input class="map-kw" type="text" value="${r.keyword}" placeholder="Keyword in narration"
+        style="padding:5px 7px;border:1.5px solid var(--border);border-radius:3px;font-size:10px;font-family:JetBrains Mono,monospace">
+      <select class="map-ldg" style="padding:5px 7px;border:1.5px solid var(--border);border-radius:3px;font-size:10px;font-family:Syne,sans-serif">
+        <option value="${r.ledger}">${r.ledger}</option>${opts}
+      </select>
+      <select class="map-vt" style="padding:5px 7px;border:1.5px solid var(--border);border-radius:3px;font-size:10px;font-family:Syne,sans-serif">
+        ${vtOpts.replace(`value="${r.vtype||''}"`,`value="${r.vtype||''}" selected`)}
+      </select>
+      <button onclick="removeMapping(${i})" style="padding:4px;background:none;border:1px solid #ddd;border-radius:3px;cursor:pointer;color:#ccc;font-size:11px;line-height:1">✕</button>
+    </div>`).join('');
+
+  document.getElementById('mappingCount').textContent=mappingRules.length+' rules active';
+
+  // Update preview table
+  document.getElementById('mappingTbody').innerHTML=mappingRules.map((r,i)=>`
+    <tr>
+      <td class="cen mono">${i+1}</td>
+      <td><span style="background:var(--lblue);color:var(--blue);padding:2px 8px;border-radius:3px;font-size:10px;font-family:JetBrains Mono,monospace">${r.keyword}</span></td>
+      <td style="font-size:10px;color:var(--teal);font-weight:600">${r.ledger}</td>
+      <td class="cen"><span style="font-size:9px;padding:2px 6px;border-radius:3px;background:var(--cream)">${r.vtype||'Auto'}</span></td>
+      <td><button class="dbtn" onclick="removeMapping(${i})">✕</button></td>
+    </tr>`).join('');
+}
+
+// Override matchLedger to use saved mapping rules
+function matchLedger(narration){
+  const u=(narration||'').toUpperCase();
+  // Check user-defined mappings first (in order)
+  for(const rule of mappingRules){
+    if(rule.keyword&&u.includes(rule.keyword.toUpperCase())){
+      return rule.ledger||SUSPENSE;
+    }
+  }
+  return SUSPENSE;
+}
+
+
 // ── STEP NAV ──────────────────────────────────────────────────────────────
 function goStep(n){
   if(n>1&&accounts.length===0){toast('Add at least one account first','err');return;}
-  if(n>2&&rows.length===0){toast('Extract transactions first','err');return;}
-  [1,2,3,4].forEach(i=>{
-    document.getElementById('pg'+i).classList.toggle('active',i===n);
+  if(n>3&&rows.length===0){toast('Extract transactions first','err');return;}
+  [1,2,3,4,5].forEach(i=>{
+    const pg=document.getElementById('pg'+i);
+    if(pg)pg.classList.toggle('active',i===n);
     const t=document.getElementById('tab'+i);
-    t.className='stab'+(i===n?' active':i<n?' done':'');
+    if(t)t.className='stab'+(i===n?' active':i<n?' done':'');
   });
-  if(n===3)renderPage3();
-  if(n===4)renderPage4();
+  if(n===2){renderMappingTable();}
+  if(n===4){renderPage4();}
+  if(n===5){renderPage5();}
 }
 
 // ── DOWNLOAD EXCEL ────────────────────────────────────────────────────────
@@ -896,18 +1271,18 @@ function downloadExcel(){
   if(!rows.length){toast('No data to export','err');return;}
   const wb=XLSX.utils.book_new();
   // Main sheet
-  const H=['SR NO','ACCOUNT HOLDER','BANK','MONTH','BILL DATE','NARRATION','VOUCHER TYPE','TALLY LEDGER','BANK LEDGER (Tally)','DEBIT ₹','CREDIT ₹','BALANCE ₹'];
+  const H=['SR NO','ACCOUNT HOLDER','BANK','MONTH','BILL DATE','BANK NARRATION','TALLY NARRATION','VOUCHER TYPE','TALLY LEDGER','BANK LEDGER (Tally)','DEBIT ₹','CREDIT ₹','BALANCE ₹'];
   const data=[H];
   rows.forEach((r,i)=>{
     const acc=accounts.find(a=>a.id===r.accId)||{};
-    data.push([i+1,r.accName||'',acc.bank||'',gm(r.date),r.date,r.narration,r.vtype,r.ledger,r.bankLedger||'',r.debit||'',r.credit||'',r.balance]);
+    data.push([i+1,r.accName||'',acc.bank||'',gm(r.date),r.date,r.narration,r.tallyNarration||r.narration,r.vtype,r.ledger,r.bankLedger||'',r.debit||'',r.credit||'',r.balance]);
   });
   data.push([],[
     'INSTRUCTIONS:','','','','','','',
     '← EDIT THIS COLUMN (H) — Replace SUSPENSE with exact Tally ledger name','← Column I is bank ledger (do not change)','',''
   ]);
   const ws=XLSX.utils.aoa_to_sheet(data);
-  ws['!cols']=[5,20,22,13,11,40,10,28,24,12,12,13].map(w=>({wch:w}));
+  ws['!cols']=[5,20,22,13,11,40,42,10,28,24,12,12,13].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb,ws,'Transaction Register');
   // Account summary sheet
   const S2=[['ACCOUNT HOLDER','BANK','TALLY LEDGER','ACCOUNT TYPE','TRANSACTIONS','TOTAL DEBIT','TOTAL CREDIT']];
@@ -937,7 +1312,7 @@ function makeVoucher(r,vno){
 <DATE>${td(r.date)}</DATE>
 <VOUCHERTYPENAME>${r.vtype}</VOUCHERTYPENAME>
 <VOUCHERNUMBER>${vno}</VOUCHERNUMBER>
-<NARRATION>${xe(r.narration)}</NARRATION>
+<NARRATION>${xe(r.tallyNarration||r.narration)}</NARRATION>
 <ALLLEDGERENTRIES.LIST>
 <LEDGERNAME>${xe(dr)}</LEDGERNAME>
 <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
