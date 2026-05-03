@@ -755,6 +755,15 @@ window.onload=()=>{
   document.getElementById('dateBadge').textContent=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
   const k=localStorage.getItem('jm_key');if(k){document.getElementById('apiKey').value=k;document.getElementById('keyOk').style.display='block';}
   try{accounts=JSON.parse(localStorage.getItem('jm_accounts')||'[]');}catch(e){accounts=[];}
+  // Load default accounts if none saved
+  if(accounts.length===0){
+    accounts=[
+      {id:'acc1',name:'Jaimin H Shah',bank:'IDFC First Bank',accNo:'1837',ledger:'IDFC BANK SAVINGS-1837',type:'Savings'},
+      {id:'acc2',name:'Jaimin H Shah',bank:'Equitas Small Finance Bank',accNo:'',ledger:'EQUITAS BANK SAVINGS',type:'Savings'},
+      {id:'acc3',name:'Jaimin H Shah',bank:'Central Bank of India',accNo:'',ledger:'CENTRAL BANK OF INDIA',type:'Savings'},
+    ];
+    saveAccounts();
+  }
   setTimeout(loadLedgerData, 100);
   try{rows=JSON.parse(localStorage.getItem('jm_rows')||'[]');}catch(e){rows=[];}
   renderAccounts();populateAccSel();renderAll();
