@@ -1127,6 +1127,53 @@ function deleteRow(i){rows.splice(i,1);saveRows();renderAll();toast('Row deleted
 let mappingRules = []; // [{keyword, ledger, vtype}]
 let ledgerList = [];
 
+// Default ledger list pre-loaded
+const DEFAULT_LEDGER_LIST = [
+  'SUSPENSE',
+  'BANK CHARGES',
+  'BANK INTEREST INCOME',
+  'JAIMIN H SHAH',
+  'IDFC BANK SAVINGS-1837',
+  'EQUITAS BANK SAVINGS',
+  'BANK OF BARODA SAVINGS',
+  'HDFC BANK SAVINGS',
+  'CENTRAL BANK OF INDIA',
+  'Pioneer Finmart',
+  'ICICI LOMBARD GIC COMMISSION',
+  'ROHA HOUSING FINANCE PRIVATE LIMITED',
+  'NISHITBHAI SHAH',
+  'RIPAL R DESAI',
+  'SHREEJI ASSOCIATES',
+  'Zerodha Broking Ltd',
+  'CARECAY PRIVATE LIMITED',
+  'CARECAY CARS PVT LTD',
+  'JM FINANCIAL SERVICES',
+  'BANDHAN LIFE INSURANCE',
+  'HEMENDRA B SHAH HUF',
+  'Mrs Shah Dhara Jaimin',
+  'Mrs Shah Nita',
+  'KUNJAL CHANDRAKA',
+  'LIC of India',
+  'Pioneer Auto Tradelink',
+  'DIVIDEND AC',
+  'WIPRO LIMITED DIVIDEND',
+  'TCS DIVIDEND',
+  'REC LIMITED DIVIDEND',
+  'POWER FINANCE CORP DIVIDEND',
+  'POWER GRID DIVIDEND',
+  'HERO MOTOCORP DIVIDEND',
+  'TATA MOTORS DIVIDEND',
+  'JSW STEEL DIVIDEND',
+  'HDB FINANCIAL DIVIDEND',
+  'RELIANCE INDUSTRIES DIVIDEND',
+  'JIO FINANCIAL DIVIDEND',
+  'IEX DIVIDEND',
+  'ONECARD CREDIT CARD',
+  'RIYA AUTOTORQUE PRIVATE LIMITED',
+  'PRAHAN JAIMINKUMAR SHAH',
+  'KAHAN JAIMINKUMAR SHAH',
+];
+
 const DEFAULT_MAPPINGS = [
   {keyword:'PIONEER FINMART', ledger:'Pioneer Finmart', vtype:''},
   {keyword:'ICICI LOMBARD', ledger:'ICICI LOMBARD GIC COMMISSION', vtype:'Receipt'},
@@ -1160,11 +1207,19 @@ const DEFAULT_MAPPINGS = [
 function loadLedgerData(){
   try{
     const ll=localStorage.getItem('jm_ledgers');
-    if(ll){ledgerList=JSON.parse(ll);document.getElementById('ledgerListInp').value=ledgerList.join('\n');showLedgerCount();}
+    if(ll){
+      ledgerList=JSON.parse(ll);
+      // Merge with defaults — add any missing ones
+      DEFAULT_LEDGER_LIST.forEach(l=>{if(!ledgerList.includes(l))ledgerList.push(l);});
+    } else {
+      ledgerList=[...DEFAULT_LEDGER_LIST];
+    }
+    document.getElementById('ledgerListInp').value=ledgerList.join('\n');
+    showLedgerCount();
     const mr=localStorage.getItem('jm_mappings');
     if(mr){mappingRules=JSON.parse(mr);}else{mappingRules=[...DEFAULT_MAPPINGS];}
     renderMappingTable();
-  }catch(e){mappingRules=[...DEFAULT_MAPPINGS];}
+  }catch(e){mappingRules=[...DEFAULT_MAPPINGS];ledgerList=[...DEFAULT_LEDGER_LIST];}
 }
 
 function showLedgerCount(){
