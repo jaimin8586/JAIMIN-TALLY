@@ -671,10 +671,16 @@ function toB64(f){return new Promise((res,rej)=>{const r=new FileReader();r.onlo
 async function extractPDF(file,idx,apiKey){
   setSt(idx,'fp','Reading');
   let b64;try{b64=await toB64(file);}catch(e){setSt(idx,'fe','Error');return[];}
-  const sys=`Extract ALL transactions from this bank statement PDF.
-Return ONLY a valid JSON array. No markdown.
-Each object: {"date":"DD/MM/YYYY","narration":"full description","vtype":"Payment|Receipt|Journal","debit":number,"credit":number,"balance":number}
-Rules: debit=money out, credit=money in, Journal=bank charges or interest. Extract every single row.`;
+  const sys=`You are a bank statement parser. Extract ALL transactions from this bank statement PDF.
+Return ONLY a valid JSON array with no markdown, no explanation, no code blocks.
+Each transaction object must have exactly these fields:
+{"date":"DD/MM/YYYY","narration":"description","vtype":"Payment|Receipt|Journal","debit":0,"credit":0,"balance":0}
+Rules:
+- debit = money going OUT (positive number, or 0 if credit)
+- credit = money coming IN (positive number, or 0 if debit)  
+- vtype = "Payment" if debit, "Receipt" if credit, "Journal" if bank charges or interest
+- Extract every single transaction row without skipping any
+- Return raw JSON array only, starting with [ and ending with ]`;
   try{
     const API_URL = PROXY_URL || 'https://api.anthropic.com/v1/messages';
     const resp=await fetch(API_URL,{
