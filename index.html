@@ -1325,35 +1325,73 @@ function goStep(n){
 function downloadExcel(){
   if(!rows.length){toast('No data to export','err');return;}
   const wb=XLSX.utils.book_new();
-  // Main sheet
-  const H=['SR NO','ACCOUNT HOLDER','BANK','MONTH','BILL DATE','BANK NARRATION','TALLY NARRATION','VOUCHER TYPE','TALLY LEDGER','BANK LEDGER (Tally)','DEBIT ₹','CREDIT ₹','BALANCE ₹'];
-  const data=[H];
+  const ll=getLedgerList();
+
+  // FIXED COLUMN ORDER — H = TALLY LEDGER always
+  const HDR=[
+    'SR NO',          // A
+    'ACCOUNT HOLDER', // B
+    'BANK',           // C
+    'MONTH',          // D
+    'DATE',           // E
+    'BANK NARRATION', // F
+    'TALLY NARRATION',// G
+    'TALLY LEDGER',   // H ← DROPDOWN HERE
+    'VOUCHER TYPE',   // I
+    'BANK LEDGER',    // J
+    'DEBIT',          // K
+    'CREDIT',         // L
+    'BALANCE'         // M
+  ];
+  const data=[HDR];
   rows.forEach((r,i)=>{
     const acc=accounts.find(a=>a.id===r.accId)||{};
-    data.push([i+1,r.accName||'',acc.bank||'',gm(r.date),r.date,r.narration,r.tallyNarration||r.narration,r.vtype,r.ledger,r.bankLedger||'',r.debit||'',r.credit||'',r.balance]);
+    data.push([
+      i+1,
+      r.accName||'',
+      acc.bank||'',
+      gm(r.date),
+      r.date,
+      r.narration,
+      r.tallyNarration||r.narration,
+      r.ledger,         // H = TALLY LEDGER
+      r.vtype,          // I = VOUCHER TYPE
+      r.bankLedger||'', // J = BANK LEDGER
+      r.debit||'',
+      r.credit||'',
+      r.balance
+    ]);
   });
-  data.push([],[
-    'INSTRUCTIONS:','','','','','','',
-    '← EDIT THIS COLUMN (H) — Replace SUSPENSE with exact Tally ledger name','← Column I is bank ledger (do not change)','',''
-  ]);
-  const ws=XLSX.utils.aoa_to_sheet(data);
-  ws['!cols']=[5,20,22,13,11,40,42,10,28,24,12,12,13].map(w=>({wch:w}));
-  XLSX.utils.book_append_sheet(wb,ws,'Transaction Register');
-  // Account summary sheet
-  const S2=[['ACCOUNT HOLDER','BANK','TALLY LEDGER','ACCOUNT TYPE','TRANSACTIONS','TOTAL DEBIT','TOTAL CREDIT']];
-  accounts.forEach(acc=>{
-    const ar=rows.filter(r=>r.accId===acc.id);
-    S2.push([acc.name,acc.bank,acc.ledger,acc.type,ar.length,ar.reduce((s,r)=>s+r.debit,0).toFixed(2),ar.reduce((s,r)=>s+r.credit,0).toFixed(2)]);
-  });
-  const ws2=XLSX.utils.aoa_to_sheet(S2);
-  ws2['!cols']=[20,24,26,12,14,14,14].map(w=>({wch:w}));
-  XLSX.utils.book_append_sheet(wb,ws2,'Account Summary');
-  const d=new Date();
-  XLSX.writeFile(wb,`Jaimin_Bank_Register_${d.getFullYear()}${('0'+(d.getMonth()+1)).slice(-2)}.xlsx`);
-  toast('✅ Excel downloaded — edit column H then upload back','ok');
-}
+  data.push([]);
+  data.push(['','','','','','','','← EDIT COL H: Select ledger from dropdown','Do not change','Do not change','','','']);
 
-// ── GENERATE XML ──────────────────────────────────────────────────────────
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[5,18,20,12,11,44,44,30,10,22,11,11,13].map(w=>({wch:w}));
+
+  // Add dropdown to column H using named range from hidden sheet
+  if(ll.length>0){
+    const ledgerData=[['LEDGERS'],...ll.map(l=>[l])];
+    const wsL=XLSX.utils.aoa_to_sheet(ledgerData);
+    wsL['!cols']=[{wch:40}];
+    XLSX.utils.book_append_sheet(wb,wsL,'_Ledgers');
+    if(!ws['!dataValidation'])ws['!dataValidation']=[];
+    const nr=rows.length;
+    for(let i=1;i<=nr;i++){
+      ws['!dataValidation'].push({
+        type:'list',
+        sqref:'H'+(i+1),
+        formula1:'_Ledgers!$A$2:$A$'+(ll.length+1),
+        showDropDown:false,
+        allowBlank:true,
+        showErrorMessage:false
+      });
+    }
+  }
+
+  // Bank Register must be first sheet
+  XLSX.utils.book_append_sheet(wb,ws,'Bank Register');
+
+
 function makeVoucher(r,vno){
   const BANK=r.bankLedger||SUSPENSE;
   const PARTY=r.ledger||SUSPENSE;
